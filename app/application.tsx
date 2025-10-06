@@ -22,6 +22,7 @@ import {
 } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import { initUserProfile, saveApplication } from '@/lib/queries';
+import { requireAuth } from '@/lib/auth-helpers';
 
 interface ApplicationData {
   // Business Information
@@ -149,6 +150,11 @@ export default function ApplicationScreen() {
     setIsSubmitting(true);
     
     try {
+      const isAuth = await requireAuth();
+      if (!isAuth) {
+        setIsSubmitting(false);
+        return;
+      }
       const role = 'pro' as const;
       const name = application.contactName;
       const email = application.contactEmail;
