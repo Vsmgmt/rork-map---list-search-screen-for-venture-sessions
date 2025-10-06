@@ -1,6 +1,6 @@
 import { supabase } from "./supabase";
 
-const BUCKET = "Boards";
+const BUCKET = "boards";
 
 async function toBlob(input: { file?: File | Blob; uri?: string }) {
   if (input.file) return input.file;
