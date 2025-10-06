@@ -2,6 +2,30 @@ import { supabase } from './supabase';
 import { uploadBoardImage } from './upload';
 import type { Board, ProUser, CheckoutInfo, CartItem } from '@/src/types/board';
 
+export async function saveImageToBoard(
+  boardId: string,
+  input: { file?: File | Blob; uri?: string },
+  opts?: { isPrimary?: boolean; sortOrder?: number; ext?: string }
+) {
+  const { publicUrl, path } = await uploadBoardImage(boardId, input, opts?.ext ?? 'png');
+
+  const { error: linkErr } = await supabase.rpc('link_board_image', {
+    p_board_id: boardId,
+    p_image_url: publicUrl,
+    p_image_path: path,
+    p_is_primary: !!opts?.isPrimary,
+    p_sort_order: opts?.sortOrder ?? 0,
+  });
+  if (linkErr) throw linkErr;
+  return { publicUrl, path };
+}
+
+export async function getBoardByIdFast(id: string) {
+  const { data, error } = await supabase.rpc('get_board_by_id_fast', { p_id: id });
+  if (error) throw error;
+  return (data && data[0]) || null;
+}
+
 export const boardQueries = {
   async getAll() {
     const { data, error } = await supabase
@@ -27,27 +51,32 @@ export const boardQueries = {
   },
 
   async getById(id: string) {
-    const { data, error } = await supabase
-      .from('boards')
-      .select(`
-        *,
-        owner:pro_users!owner_id (
-          id,
-          name,
-          email,
-          location,
-          avatar_url,
-          is_verified,
-          rating,
-          total_boards,
-          joined_date
-        )
-      `)
-      .eq('id', id)
-      .single();
-    
-    if (error) throw error;
-    return data;
+    try {
+      const board = await getBoardByIdFast(id);
+      return board;
+    } catch {
+      const { data, error } = await supabase
+        .from('boards')
+        .select(`
+          *,
+          owner:pro_users!owner_id (
+            id,
+            name,
+            email,
+            location,
+            avatar_url,
+            is_verified,
+            rating,
+            total_boards,
+            joined_date
+          )
+        `)
+        .eq('id', id)
+        .single();
+      
+      if (error) throw error;
+      return data;
+    }
   },
 
   async getByLocation(location: string) {

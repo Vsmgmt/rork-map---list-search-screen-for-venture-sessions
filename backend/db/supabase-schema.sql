@@ -149,3 +149,85 @@ CREATE TRIGGER update_pro_users_updated_at BEFORE UPDATE ON pro_users FOR EACH R
 CREATE TRIGGER update_regular_users_updated_at BEFORE UPDATE ON regular_users FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_bookings_updated_at BEFORE UPDATE ON bookings FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_conversations_updated_at BEFORE UPDATE ON conversations FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- RPC function to link board image (updates image_url and image_path)
+CREATE OR REPLACE FUNCTION link_board_image(
+  p_board_id TEXT,
+  p_image_url TEXT,
+  p_image_path TEXT,
+  p_is_primary BOOLEAN DEFAULT true,
+  p_sort_order INTEGER DEFAULT 0
+)
+RETURNS void AS $
+BEGIN
+  UPDATE boards
+  SET 
+    image_url = p_image_url,
+    image_path = p_image_path,
+    updated_at = NOW()
+  WHERE id = p_board_id;
+END;
+$ LANGUAGE plpgsql;
+
+-- RPC function to get board by ID with owner details (fast query)
+CREATE OR REPLACE FUNCTION get_board_by_id_fast(p_id TEXT)
+RETURNS TABLE (
+  id TEXT,
+  short_name TEXT,
+  location TEXT,
+  board_type TEXT,
+  price_per_day DECIMAL,
+  description TEXT,
+  images TEXT[],
+  image_url TEXT,
+  image_path TEXT,
+  owner_id TEXT,
+  owner_name TEXT,
+  owner_avatar TEXT,
+  owner_rating DECIMAL,
+  owner_reviews_count INTEGER,
+  rating DECIMAL,
+  reviews_count INTEGER,
+  available BOOLEAN,
+  created_at TIMESTAMP WITH TIME ZONE,
+  updated_at TIMESTAMP WITH TIME ZONE,
+  owner JSONB
+) AS $
+BEGIN
+  RETURN QUERY
+  SELECT 
+    b.id,
+    b.short_name,
+    b.location,
+    b.board_type,
+    b.price_per_day,
+    b.description,
+    b.images,
+    b.image_url,
+    b.image_path,
+    b.owner_id,
+    b.owner_name,
+    b.owner_avatar,
+    b.owner_rating,
+    b.owner_reviews_count,
+    b.rating,
+    b.reviews_count,
+    b.available,
+    b.created_at,
+    b.updated_at,
+    jsonb_build_object(
+      'id', p.id,
+      'name', p.name,
+      'email', p.email,
+      'location', p.location,
+      'avatar_url', p.avatar_url,
+      'is_verified', p.is_verified,
+      'rating', p.rating,
+      'boards_count', p.boards_count,
+      'joined_date', p.joined_date
+    ) as owner
+  FROM boards b
+  LEFT JOIN pro_users p ON b.owner_id = p.id
+  WHERE b.id = p_id;
+END;
+$ LANGUAGE plpgsql;
