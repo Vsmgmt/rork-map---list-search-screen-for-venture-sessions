@@ -23,7 +23,32 @@ export async function saveImageToBoard(
 export async function getBoardByIdFast(id: string) {
   const { data, error } = await supabase.rpc('get_board_by_id_fast', { p_id: id });
   if (error) throw error;
-  return (data && data[0]) || null;
+  const row = (data && data[0]) || null;
+  if (!row) return null;
+
+  return {
+    ...row,
+    imageUrl: row.primary_image_url,
+    image_url: row.primary_image_url,
+    shortName: row.short_name,
+    dimensionsDetail: row.dimensions_detail,
+    pricePerDay: row.price_per_day,
+    owner: {
+      id: row.owner_id,
+      name: row.owner_name,
+      avatar_url: row.owner_avatar_url,
+      avatarUrl: row.owner_avatar_url,
+      rating: row.owner_rating,
+      reviews_count: row.owner_reviews_count,
+      location: row.location,
+      joined_date: row.owner_joined_date,
+      joinedDate: row.owner_joined_date,
+      total_boards: row.owner_total_boards,
+      totalBoards: row.owner_total_boards,
+      is_verified: row.owner_is_verified,
+      verified: row.owner_is_verified,
+    },
+  };
 }
 
 export const boardQueries = {
