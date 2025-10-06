@@ -8,13 +8,14 @@ import {
   Alert,
   Image,
   Platform,
+  ActivityIndicator,
 } from 'react-native';
 import DatePicker from '@/components/DatePicker';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLocalSearchParams, router } from 'expo-router';
 import { X, MapPin, Calendar, DollarSign, Ruler, Droplets, ShoppingCart, Check, Truck, Star, MessageCircle } from 'lucide-react-native';
 import { useCart } from '@/src/context/cart';
-import { useBoardsBackend } from '@/src/context/boards-backend';
+import { boardQueries } from '@/lib/queries';
 import { useMessages } from '@/src/context/messages';
 import { useUser } from '@/src/context/user';
 import Colors from '@/constants/colors';
@@ -30,51 +31,30 @@ export default function BoardPreviewModal() {
   const [endDate, setEndDate] = useState('');
   const [showDateInputs, setShowDateInputs] = useState(false);
   const [deliverySelected, setDeliverySelected] = useState(false);
+  const [board, setBoard] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
   
-  // Always call the hook, but handle errors gracefully
-  const boardsContext = useBoardsBackend();
-  
-  // Safely destructure with fallbacks
-  const getBoardById = boardsContext?.getBoardById || (() => undefined);
-  const boards = boardsContext?.boards || [];
-  const isLoading = boardsContext?.isLoading || false;
-  const backendAvailable = boardsContext?.backendAvailable || false;
-  
-  console.log('BoardPreview context state:', {
-    hasContext: !!boardsContext,
-    hasGetBoardById: typeof getBoardById === 'function',
-    boardsCount: boards.length,
-    isLoading,
-    backendAvailable,
-    boardId
-  });
-  
-  const [board, setBoard] = useState(() => {
-    if (getBoardById && boardId) {
-      try {
-        return getBoardById(boardId);
-      } catch (error) {
-        console.error('Failed to get board by ID:', error);
-        return undefined;
-      }
-    }
-    return undefined;
-  });
-  
-  // Update board when boards data changes (e.g., after user update)
   useEffect(() => {
-    if (getBoardById && boardId) {
-      const updatedBoard = getBoardById(boardId);
-      if (updatedBoard) {
-        console.log('Board data updated:', updatedBoard.owner.name);
-        setBoard(updatedBoard);
-      }
+    if (!boardId) {
+      setLoading(false);
+      return;
     }
-  }, [boards, boardId, getBoardById]);
-  
-  // Add safety check for context after hooks
-  if (!boardsContext || !getBoardById || typeof getBoardById !== 'function') {
-    console.error('BoardsBackend context is not available or invalid');
+    
+    (async () => {
+      try {
+        console.log('Fetching board:', boardId);
+        const data = await boardQueries.getById(boardId);
+        console.log('Board fetched:', data);
+        setBoard(data);
+      } catch (error) {
+        console.error('Failed to fetch board:', error);
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, [boardId]);
+
+  if (loading) {
     return (
       <View style={[styles.container, { paddingTop: insets.top }]}>
         <View style={styles.header}>
@@ -83,15 +63,13 @@ export default function BoardPreviewModal() {
           </Pressable>
         </View>
         <View style={styles.errorContainer}>
-          <Text style={styles.errorText}>Loading boards context...</Text>
-          <Text style={styles.errorSubText}>Backend available: {backendAvailable ? 'Yes' : 'No'}</Text>
-          <Text style={styles.errorSubText}>Context available: {!!boardsContext ? 'Yes' : 'No'}</Text>
-          <Text style={styles.errorSubText}>getBoardById available: {typeof getBoardById === 'function' ? 'Yes' : 'No'}</Text>
+          <ActivityIndicator size="large" color={Colors.light.tint} />
+          <Text style={styles.errorSubText}>Loading board...</Text>
         </View>
       </View>
     );
   }
-
+  
   if (!board) {
     return (
       <View style={[styles.container, { paddingTop: insets.top }]}>
@@ -103,7 +81,6 @@ export default function BoardPreviewModal() {
         <View style={styles.errorContainer}>
           <Text style={styles.errorText}>Board not found</Text>
           <Text style={styles.errorSubText}>Board ID: {boardId}</Text>
-          <Text style={styles.errorSubText}>Available boards: {boards?.length || 0}</Text>
         </View>
       </View>
     );
