@@ -701,3 +701,16 @@ export async function becomePro() {
   const { error } = await supabase.rpc('promote_to_pro', { p_id: user.id });
   if (error) throw error;
 }
+
+export async function createBoard(data: any) {
+  const user = (await supabase.auth.getUser()).data.user;
+  if (!user) throw new Error('Not signed in');
+
+  const { data: roleRow } = await supabase.from('v_current_user_profile').select('*').single();
+  if (roleRow?.role !== 'pro') throw new Error('You must be a Pro to list a board.');
+
+  const insert = { ...data, owner_id: user.id };
+  const { data: board, error } = await supabase.from('boards').insert(insert).select().single();
+  if (error) throw error;
+  return board;
+}
