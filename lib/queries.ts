@@ -40,7 +40,7 @@ export const boardQueries = {
           avatar_url,
           is_verified,
           rating,
-          total_boards,
+          boards_count,
           joined_date
         )
       `)
@@ -67,7 +67,7 @@ export const boardQueries = {
             avatar_url,
             is_verified,
             rating,
-            total_boards,
+            boards_count,
             joined_date
           )
         `)
