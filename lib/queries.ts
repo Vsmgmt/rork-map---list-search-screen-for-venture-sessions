@@ -669,3 +669,35 @@ export const statsQueries = {
     };
   },
 };
+
+export async function initUserProfile(role: 'regular' | 'pro', profile: {
+  name: string; email: string; phone?: string; location?: string; avatar_url?: string; bio?: string;
+}) {
+  const user = (await supabase.auth.getUser()).data.user;
+  if (!user) throw new Error('Not signed in');
+
+  const args = {
+    p_id: user.id,
+    p_name: profile.name,
+    p_email: profile.email,
+    p_phone: profile.phone ?? null,
+    p_location: profile.location ?? null,
+    p_avatar_url: profile.avatar_url ?? null,
+    p_bio: profile.bio ?? null,
+  };
+
+  if (role === 'pro') {
+    const { error } = await supabase.rpc('upsert_pro_profile', args);
+    if (error) throw error;
+  } else {
+    const { error } = await supabase.rpc('upsert_regular_profile', args);
+    if (error) throw error;
+  }
+}
+
+export async function becomePro() {
+  const user = (await supabase.auth.getUser()).data.user;
+  if (!user) throw new Error('Not signed in');
+  const { error } = await supabase.rpc('promote_to_pro', { p_id: user.id });
+  if (error) throw error;
+}
