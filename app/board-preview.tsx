@@ -97,7 +97,8 @@ export default function BoardPreviewModal() {
     }
   };
   
-  const getBoardTypeLabel = (type: string) => {
+  const getBoardTypeLabel = (type: string | undefined | null) => {
+    if (!type) return 'Unknown';
     switch (type) {
       case 'soft-top': return 'Soft-top';
       case 'longboard': return 'Longboard';
@@ -240,9 +241,11 @@ export default function BoardPreviewModal() {
               style={styles.boardImage}
               resizeMode="contain"
             />
-            <View style={styles.heroTypeOverlay}>
-              <Text style={styles.heroTypeText}>{getBoardTypeLabel(board.type).toUpperCase()}</Text>
-            </View>
+            {board.type && (
+              <View style={styles.heroTypeOverlay}>
+                <Text style={styles.heroTypeText}>{getBoardTypeLabel(board.type).toUpperCase()}</Text>
+              </View>
+            )}
           </View>
         </View>
         
@@ -250,9 +253,11 @@ export default function BoardPreviewModal() {
         <View style={styles.contentContainer}>
           <View style={styles.titleSection}>
             <Text style={styles.boardTitle}>{board.short_name}</Text>
-            <View style={[styles.typeTag, { backgroundColor: getBoardTypeColor(board.type) }]}>
-              <Text style={styles.typeTagText}>{getBoardTypeLabel(board.type)}</Text>
-            </View>
+            {board.type && (
+              <View style={[styles.typeTag, { backgroundColor: getBoardTypeColor(board.type) }]}>
+                <Text style={styles.typeTagText}>{getBoardTypeLabel(board.type)}</Text>
+              </View>
+            )}
           </View>
           
           {/* Specifications */}
@@ -396,7 +401,7 @@ export default function BoardPreviewModal() {
           <View style={styles.descriptionSection}>
             <Text style={styles.sectionTitle}>Description</Text>
             <Text style={styles.descriptionText}>
-              This {getBoardTypeLabel(board.type).toLowerCase()} is perfect for your surfing adventure. 
+              This {board.type ? getBoardTypeLabel(board.type).toLowerCase() : 'board'} is perfect for your surfing adventure. 
               With its {board.dimensions_detail} dimensions{board.volume_l ? ` and ${board.volume_l}L volume` : ''}, 
               it offers excellent performance for surfers of all levels. Available for pickup in {board.location}.
             </Text>
