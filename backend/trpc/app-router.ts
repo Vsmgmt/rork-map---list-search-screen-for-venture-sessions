@@ -7,7 +7,8 @@ import {
   createRegularUserRoute,
   updateRegularUserRoute,
   deleteRegularUserRoute,
-  getUserStatsRoute
+  getUserStatsRoute,
+  initUserProfileRoute
 } from './routes/users/index';
 import {
   getStatsRoute,
@@ -50,6 +51,7 @@ export const appRouter = router({
     updateRegular: updateRegularUserRoute,
     deleteRegular: deleteRegularUserRoute,
     getStats: getUserStatsRoute,
+    initProfile: initUserProfileRoute,
   }),
   admin: router({
     getStats: getStatsRoute,

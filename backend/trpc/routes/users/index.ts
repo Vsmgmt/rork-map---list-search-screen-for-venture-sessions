@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { publicProcedure } from '@/backend/trpc/create-context';
 import { db } from '@/backend/db';
+import { supabase } from '@/lib/supabase';
 
 
 
@@ -70,4 +71,42 @@ export const getUserStatsRoute = publicProcedure
   .query(async () => {
     console.log('Getting user statistics...');
     return await db.getUserStats();
+  });
+
+// Initialize user profile
+const InitUserProfileSchema = z.object({
+  role: z.enum(['regular', 'pro']),
+  profile: z.object({
+    name: z.string(),
+    email: z.string().email(),
+    phone: z.string().optional(),
+    location: z.string().optional(),
+    avatar_url: z.string().optional(),
+    bio: z.string().optional(),
+  }),
+});
+
+export const initUserProfileRoute = publicProcedure
+  .input(InitUserProfileSchema)
+  .mutation(async ({ input }) => {
+    const user = (await supabase.auth.getUser()).data.user;
+    if (!user) throw new Error('Not signed in');
+
+    const args = {
+      p_id: user.id,
+      p_name: input.profile.name,
+      p_email: input.profile.email,
+      p_phone: input.profile.phone ?? null,
+      p_location: input.profile.location ?? null,
+      p_avatar_url: input.profile.avatar_url ?? null,
+      p_bio: input.profile.bio ?? null,
+    };
+
+    if (input.role === 'pro') {
+      const { error } = await supabase.rpc('upsert_pro_profile', args);
+      if (error) throw error;
+    } else {
+      const { error } = await supabase.rpc('upsert_regular_profile', args);
+      if (error) throw error;
+    }
   });
