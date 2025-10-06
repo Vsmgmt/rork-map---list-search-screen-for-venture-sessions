@@ -25,7 +25,7 @@ export default function CartScreen() {
     toggleDelivery, 
     getDeliveryBreakdown,
     addExtraToItem,
-    removeExtraFromItem,
+
     updateExtraQuantity,
     updateExtraSize,
     availableExtras
@@ -127,6 +127,7 @@ export default function CartScreen() {
                 lat: 34.0259,
                 lon: -118.7798,
                 imageUrl: 'https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=400&h=600&fit=crop',
+                image_url: 'https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=400&h=600&fit=crop',
                 delivery_available: true,
                 delivery_price: 25,
                 owner: {
@@ -176,13 +177,15 @@ export default function CartScreen() {
               <View style={styles.itemInfo}>
                 <Text style={styles.boardName}>{item.board.short_name}</Text>
                 <Text style={styles.boardDetails}>{item.board.dimensions_detail}</Text>
-                <View style={styles.typeContainer}>
-                  <View style={[styles.typeBadge, { backgroundColor: getTypeColor(item.board.type) }]}>
-                    <Text style={styles.typeText}>
-                      {item.board.type.charAt(0).toUpperCase() + item.board.type.slice(1)}
-                    </Text>
+                {item.board.type && (
+                  <View style={styles.typeContainer}>
+                    <View style={[styles.typeBadge, { backgroundColor: getTypeColor(item.board.type) }]}>
+                      <Text style={styles.typeText}>
+                        {item.board.type.charAt(0).toUpperCase() + item.board.type.slice(1)}
+                      </Text>
+                    </View>
                   </View>
-                </View>
+                )}
                 <View style={styles.ownerRow}>
                   <Image
                     source={{ uri: item.board.owner.avatarUrl }}
