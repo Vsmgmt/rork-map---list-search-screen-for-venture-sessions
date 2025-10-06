@@ -21,6 +21,7 @@ import {
   Handshake
 } from 'lucide-react-native';
 import Colors from '@/constants/colors';
+import { initUserProfile, saveApplication } from '@/lib/queries';
 
 interface ApplicationData {
   // Business Information
@@ -148,10 +149,32 @@ export default function ApplicationScreen() {
     setIsSubmitting(true);
     
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      const role = 'pro' as const;
+      const name = application.contactName;
+      const email = application.contactEmail;
+      const phone = application.contactPhone || undefined;
+      const location = application.businessAddress || undefined;
+      const avatarUrl = undefined;
+      const notes = `Business: ${application.businessName}\nType: ${application.businessType}\nDescription: ${application.businessDescription}\nWhy Join: ${application.whyJoinPlatform}\nAdditional: ${application.additionalNotes}`;
+
+      await initUserProfile(role, { 
+        name, 
+        email, 
+        phone, 
+        location, 
+        avatar_url: avatarUrl, 
+        bio: notes 
+      });
+
+      await saveApplication({ 
+        role, 
+        name, 
+        email, 
+        phone: phone ?? null, 
+        location: location ?? null, 
+        notes 
+      });
       
-      // Navigate to confirmation screen
       router.push({
         pathname: '/confirmation',
         params: {
@@ -163,7 +186,7 @@ export default function ApplicationScreen() {
       
     } catch (error) {
       console.error('Failed to submit application:', error);
-      Alert.alert('Error', 'Failed to submit application. Please try again.');
+      Alert.alert('Error', error instanceof Error ? error.message : 'Failed to create user');
     } finally {
       setIsSubmitting(false);
     }

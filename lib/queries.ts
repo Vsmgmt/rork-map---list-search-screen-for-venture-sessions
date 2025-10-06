@@ -714,3 +714,22 @@ export async function createBoard(data: any) {
   if (error) throw error;
   return board;
 }
+
+export async function saveApplication(app: {
+  role: 'regular' | 'pro';
+  name: string;
+  email: string;
+  phone?: string | null;
+  location?: string | null;
+  notes?: string | null;
+}) {
+  const { data: auth } = await supabase.auth.getUser();
+  const applicant_id = auth?.user?.id ?? null;
+  const { data, error } = await supabase
+    .from('applications')
+    .insert([{ ...app, applicant_id }])
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
+}
