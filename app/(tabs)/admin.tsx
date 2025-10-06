@@ -360,15 +360,18 @@ export default function AdminScreen() {
         
         <View style={styles.statsContainer}>
           <Pressable 
-            style={[styles.statCard, { backgroundColor: '#e8f5e8' }]}
+            style={[
+              styles.statCard, 
+              { backgroundColor: createProUsersMutation.isPending ? '#d4edda' : '#e8f5e8' }
+            ]}
             onPress={handleCreateProUsers}
             disabled={createProUsersMutation.isPending}
           >
-            <Crown size={24} color="#28a745" />
-            <Text style={styles.statValue}>
-              {createProUsersMutation.isPending ? '...' : 'Create'}
+            <Crown size={24} color={createProUsersMutation.isPending ? '#999' : '#28a745'} />
+            <Text style={[styles.statValue, createProUsersMutation.isPending && { color: '#999' }]}>
+              {createProUsersMutation.isPending ? 'Creating...' : 'Create'}
             </Text>
-            <Text style={styles.statLabel}>5 Pro Users + Boards</Text>
+            <Text style={[styles.statLabel, createProUsersMutation.isPending && { color: '#999' }]}>5 Pro Users + Boards</Text>
           </Pressable>
           <Pressable 
             style={[styles.statCard, { backgroundColor: '#fff8e1' }]}
