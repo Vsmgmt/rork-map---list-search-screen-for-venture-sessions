@@ -21,18 +21,30 @@ export default function DatePicker({ value, onDateChange, placeholder, style }: 
   const [showPicker, setShowPicker] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date>(() => {
     if (value) {
-      const date = new Date(value);
-      return isNaN(date.getTime()) ? new Date() : date;
+      try {
+        const date = new Date(value);
+        if (isNaN(date.getTime())) {
+          console.warn('Invalid date value:', value);
+          return new Date();
+        }
+        return date;
+      } catch (error) {
+        console.error('Error parsing date:', error);
+        return new Date();
+      }
     }
     return new Date();
   });
 
-  // Update selectedDate when value prop changes
   useEffect(() => {
     if (value) {
-      const date = new Date(value);
-      if (!isNaN(date.getTime())) {
-        setSelectedDate(date);
+      try {
+        const date = new Date(value);
+        if (!isNaN(date.getTime())) {
+          setSelectedDate(date);
+        }
+      } catch (error) {
+        console.error('Error updating date:', error);
       }
     }
   }, [value]);
@@ -53,14 +65,24 @@ export default function DatePicker({ value, onDateChange, placeholder, style }: 
   };
 
   const handleDateChange = (event: any, date?: Date) => {
+    console.log('DatePicker onChange:', { eventType: event?.type, date });
+    
     if (Platform.OS === 'android') {
       setShowPicker(false);
     }
     
     if (date && event.type !== 'dismissed') {
-      setSelectedDate(date);
-      const formattedDate = formatDate(date);
-      onDateChange(formattedDate);
+      try {
+        if (isNaN(date.getTime())) {
+          console.error('Invalid date received:', date);
+          return;
+        }
+        setSelectedDate(date);
+        const formattedDate = formatDate(date);
+        onDateChange(formattedDate);
+      } catch (error) {
+        console.error('Error in handleDateChange:', error);
+      }
     }
     
     if (event.type === 'dismissed') {
@@ -69,7 +91,12 @@ export default function DatePicker({ value, onDateChange, placeholder, style }: 
   };
 
   const openPicker = () => {
-    setShowPicker(true);
+    console.log('Opening date picker, current date:', selectedDate);
+    try {
+      setShowPicker(true);
+    } catch (error) {
+      console.error('Error opening picker:', error);
+    }
   };
 
   const closePicker = () => {
@@ -110,9 +137,11 @@ export default function DatePicker({ value, onDateChange, placeholder, style }: 
               <DateTimePicker
                 value={selectedDate}
                 mode="date"
-                display="calendar"
+                display="spinner"
                 onChange={handleDateChange}
                 style={styles.iosPicker}
+                minimumDate={new Date(2020, 0, 1)}
+                maximumDate={new Date(2030, 11, 31)}
               />
             </View>
           </View>
