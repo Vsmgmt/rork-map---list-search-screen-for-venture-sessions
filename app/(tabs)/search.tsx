@@ -17,8 +17,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ShoppingCart, Truck, Info, X } from 'lucide-react-native';
 import { router } from 'expo-router';
 import { useCart } from '@/src/context/cart';
-
-import { boardQueries } from '../../lib/queries';
+import { useBoardsBackend } from '@/src/context/boards-backend';
 import { Board, BoardType } from '@/src/types/board';
 
 /** Pick the best cover image URL for a board (supports snake_case + camelCase). */
@@ -40,10 +39,9 @@ function ownerAvatarFor(item: any): string | null {
 export default function SearchScreen() {
   const insets = useSafeAreaInsets();
   const { addToCart, getItemCount, cartItems } = useCart();
+  const { boards: backendBoards, isLoading: loadingBoards } = useBoardsBackend();
 
   const [boards, setBoards] = useState<Board[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [filtered, setFiltered] = useState<Board[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
@@ -67,24 +65,17 @@ export default function SearchScreen() {
     return () => clearTimeout(t);
   }, [keyword]);
 
-  // Initial load
+  // Update boards when backend data loads
   useEffect(() => {
-    (async () => {
-      try {
-        const data = await boardQueries.getAll();
-        setBoards((data ?? []) as Board[]);
-        setFiltered((data ?? []) as Board[]);
-      } catch (e: any) {
-        setError(e?.message || 'Failed to load boards');
-      } finally {
-        setLoading(false);
-      }
-    })();
-  }, []);
+    if (backendBoards && backendBoards.length > 0) {
+      console.log('Search: Loaded boards from backend:', backendBoards.length);
+      setBoards(backendBoards);
+      setFiltered(backendBoards);
+    }
+  }, [backendBoards]);
 
   // Live search (client-side)
   const performSearch = useCallback(() => {
-    setLoading(true);
     setTimeout(() => {
       let results = [...boards];
 
@@ -127,7 +118,6 @@ export default function SearchScreen() {
       });
 
       setFiltered(results as Board[]);
-      setLoading(false);
     }, 150);
   }, [boards, startDate, endDate, location, debouncedKeyword, selectedBoardType]);
 
@@ -269,18 +259,10 @@ export default function SearchScreen() {
     );
   };
 
-  if (loading) {
+  if (loadingBoards) {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
         <ActivityIndicator />
-      </View>
-    );
-  }
-
-  if (error) {
-    return (
-      <View style={{ padding: 16 }}>
-        <Text>❌ {error}</Text>
       </View>
     );
   }
@@ -570,4 +552,47 @@ const styles = StyleSheet.create({
 
   emptyState: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 32 },
   emptyStateText: { fontSize: 16, color: '#666', textAlign: 'center' },
+
+  infoBubble: {
+    backgroundColor: 'white',
+    borderRadius: 16,
+    margin: 20,
+    maxWidth: 350,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  infoBubbleHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    paddingBottom: 12,
+    gap: 8,
+  },
+  infoBubbleTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#333',
+    flex: 1,
+  },
+  infoBubbleClose: {
+    padding: 4,
+  },
+  infoBubbleContent: {
+    paddingHorizontal: 20,
+    paddingBottom: 20,
+    gap: 12,
+  },
+  infoBubbleTip: {
+    fontSize: 15,
+    color: '#666',
+    lineHeight: 22,
+  },
+  infoBubbleBold: {
+    fontWeight: '600',
+    color: '#333',
+  },
 });
