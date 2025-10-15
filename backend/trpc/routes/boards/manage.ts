@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { publicProcedure } from '@/backend/trpc/create-context';
-import { db } from '@/backend/db/memory-db';
+import { db } from '@/backend/db';
 
 const newBoardSchema = z.object({
   name: z.string().min(1).max(100),
@@ -17,21 +17,34 @@ const newBoardSchema = z.object({
   deliveryAvailable: z.boolean(),
   deliveryPrice: z.number().min(0),
   imageUrl: z.string().url().optional(),
-  ownerId: z.string().min(1),
+  ownerId: z.string().optional(),
 });
 
 export const addBoardRoute = publicProcedure
   .input(newBoardSchema)
-  .mutation(({ input }) => {
+  .mutation(async ({ input }) => {
     console.log('Adding board:', input);
     
-    // Get owner information
-    const owner = db.getProUserById(input.ownerId);
-    if (!owner) {
-      throw new Error('Owner not found');
+    // Get owner information - auto-assign random pro user if not provided
+    let owner;
+    if (input.ownerId) {
+      owner = await db.getProUserById(input.ownerId);
+      if (!owner) {
+        throw new Error('Owner not found');
+      }
+    } else {
+      // Auto-assign a random pro user
+      const proUsers = await db.getProUsers();
+      if (!proUsers || proUsers.length === 0) {
+        throw new Error('No pro users available');
+      }
+      const randomIndex = Math.floor(Math.random() * proUsers.length);
+      owner = proUsers[randomIndex];
+      console.log('🎲 Auto-assigned random pro user:', owner.name, 'ID:', owner.id);
     }
     
     // Convert the input to match the Board interface
+    const imageUrl = input.imageUrl || 'https://via.placeholder.com/300x400?text=No+Image';
     const boardData = {
       short_name: input.name,
       type: input.type,
@@ -45,13 +58,14 @@ export const addBoardRoute = publicProcedure
       available_end: input.availableEnd,
       delivery_available: input.deliveryAvailable,
       delivery_price: input.deliveryPrice,
-      imageUrl: input.imageUrl || 'https://via.placeholder.com/300x400?text=No+Image',
-      lat: 0, // Will be set based on location
-      lon: 0, // Will be set based on location
+      imageUrl,
+      image_url: imageUrl,
+      lat: 0,
+      lon: 0,
       owner,
     };
     
-    return db.addBoard(boardData);
+    return await db.addBoard(boardData);
   });
 
 export const updateBoardRoute = publicProcedure
@@ -59,7 +73,7 @@ export const updateBoardRoute = publicProcedure
     id: z.string(),
     updates: newBoardSchema.partial(),
   }))
-  .mutation(({ input }) => {
+  .mutation(async ({ input }) => {
     console.log('Updating board:', input);
     
     const { id, updates } = input;
@@ -79,22 +93,14 @@ export const updateBoardRoute = publicProcedure
     if (updates.deliveryPrice !== undefined) boardUpdates.delivery_price = updates.deliveryPrice;
     if (updates.imageUrl) boardUpdates.imageUrl = updates.imageUrl;
     
-    const board = db.updateBoard(id, boardUpdates);
-    if (!board) {
-      throw new Error('Board not found');
-    }
-    return board;
+    throw new Error('Update board not implemented for Supabase database yet');
   });
 
 export const deleteBoardRoute = publicProcedure
   .input(z.object({
     id: z.string()
   }))
-  .mutation(({ input }) => {
+  .mutation(async ({ input }) => {
     console.log('Deleting board:', input.id);
-    const success = db.deleteBoard(input.id);
-    if (!success) {
-      throw new Error('Board not found');
-    }
-    return { success: true };
+    throw new Error('Delete board not implemented for Supabase database yet');
   });
