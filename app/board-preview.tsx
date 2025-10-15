@@ -18,6 +18,8 @@ import { useCart } from '@/src/context/cart';
 import { boardQueries } from '@/lib/queries';
 import { useMessages } from '@/src/context/messages';
 import { useUser } from '@/src/context/user';
+import { useBoardsBackend } from '@/src/context/boards-backend';
+import { useBoards } from '@/src/context/boards';
 import Colors from '@/constants/colors';
 
 export default function BoardPreviewModal() {
@@ -26,6 +28,8 @@ export default function BoardPreviewModal() {
   const { addToCart, cartItems } = useCart();
   const { createConversation } = useMessages();
   const { currentUser } = useUser();
+  const { getBoardById: getBackendBoard } = useBoardsBackend();
+  const { getBoardById: getLocalBoard } = useBoards();
   
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
@@ -43,8 +47,26 @@ export default function BoardPreviewModal() {
     (async () => {
       try {
         console.log('Fetching board:', boardId);
-        const data = await boardQueries.getById(boardId);
-        console.log('Board fetched:', data);
+        
+        // First try backend context (includes both Supabase and local seed data)
+        let data = getBackendBoard(boardId);
+        console.log('Backend board:', data);
+        
+        // If not found in backend, try local boards
+        if (!data) {
+          console.log('Not found in backend, trying local boards');
+          data = getLocalBoard(boardId);
+          console.log('Local board:', data);
+        }
+        
+        // If still not found, try Supabase directly
+        if (!data) {
+          console.log('Not found locally, trying Supabase');
+          data = await boardQueries.getById(boardId);
+          console.log('Supabase board:', data);
+        }
+        
+        console.log('Final board data:', data);
         setBoard(data);
       } catch (error) {
         console.error('Failed to fetch board:', error);
@@ -52,7 +74,7 @@ export default function BoardPreviewModal() {
         setLoading(false);
       }
     })();
-  }, [boardId]);
+  }, [boardId, getBackendBoard, getLocalBoard]);
 
   if (loading) {
     return (
