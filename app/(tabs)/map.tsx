@@ -17,9 +17,9 @@ import DatePicker from '@/components/DatePicker';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ShoppingCart, X, MapPin, Info, Truck } from 'lucide-react-native';
 import { router } from 'expo-router';
-import { getBoards } from '@/src/data/seed';
 import { lonLatToXY, jitterOverlappingMarkers, calculateDistance } from '@/src/util/geo';
 import { useCart } from '@/src/context/cart';
+import { useBoardsBackend } from '@/src/context/boards-backend';
 import { Board, BoardType } from '@/src/types/board';
 
 const WORLD_MAP_URL = 'https://images.unsplash.com/photo-1526778548025-fa2f459cd5c1?w=2000&h=1000&fit=crop';
@@ -31,18 +31,16 @@ const MAP_INTRINSIC_HEIGHT = 1000;
 export default function MapScreen() {
   const insets = useSafeAreaInsets();
   const { addToCart, getItemCount, cartItems } = useCart();
-  const [boards] = useState<Board[]>(() => getBoards(100));
-  const [filtered, setFiltered] = useState<Board[]>(boards);
+  const { boards: backendBoards, isLoading: loadingBoards } = useBoardsBackend();
+  const [boards, setBoards] = useState<Board[]>([]);
+  const [filtered, setFiltered] = useState<Board[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [nearbyModalVisible, setNearbyModalVisible] = useState(false);
   const [nearbyBoards, setNearbyBoards] = useState<(Board & { distance: number })[]>([]);
   const [clickedLocation, setClickedLocation] = useState<{ lat: number; lon: number; locationName: string } | null>(null);
   const [showInfoBubble, setShowInfoBubble] = useState(false);
-  const [randomBoards] = useState<Board[]>(() => {
-    const shuffled = [...boards].sort(() => 0.5 - Math.random());
-    return shuffled.slice(0, 20);
-  });
+  const [randomBoards, setRandomBoards] = useState<Board[]>([]);
 
   
   // Filter inputs
@@ -60,6 +58,17 @@ export default function MapScreen() {
   // Debounced inputs for auto-search
   const [debouncedKeyword, setDebouncedKeyword] = useState(keyword);
   const [debouncedLocation, setDebouncedLocation] = useState(location);
+  
+  // Update boards when backend data loads
+  useEffect(() => {
+    if (backendBoards && backendBoards.length > 0) {
+      console.log('Map: Loaded boards from backend:', backendBoards.length);
+      setBoards(backendBoards);
+      setFiltered(backendBoards);
+      const shuffled = [...backendBoards].sort(() => 0.5 - Math.random());
+      setRandomBoards(shuffled.slice(0, 20));
+    }
+  }, [backendBoards]);
   
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -382,7 +391,7 @@ export default function MapScreen() {
       
       {/* Map Container */}
       <View style={styles.mapContainer}>
-        {loading ? (
+        {(loading || loadingBoards) ? (
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color="#007AFF" />
           </View>
