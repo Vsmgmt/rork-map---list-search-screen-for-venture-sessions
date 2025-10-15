@@ -7,6 +7,7 @@ import {
   Platform,
   Modal,
   TextInput,
+  Alert,
 } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { Calendar } from 'lucide-react-native';
@@ -20,33 +21,28 @@ interface DatePickerProps {
 
 export default function DatePicker({ value, onDateChange, placeholder, style }: DatePickerProps) {
   const [showPicker, setShowPicker] = useState(false);
-  const [selectedDate, setSelectedDate] = useState<Date>(() => {
-    if (value) {
-      try {
-        const date = new Date(value);
-        if (isNaN(date.getTime())) {
-          console.warn('Invalid date value:', value);
-          return new Date();
-        }
-        return date;
-      } catch (error) {
-        console.error('Error parsing date:', error);
+  
+  const getValidDate = (dateValue: string): Date => {
+    if (!dateValue) return new Date();
+    try {
+      const date = new Date(dateValue);
+      if (isNaN(date.getTime())) {
+        console.warn('Invalid date value:', dateValue);
         return new Date();
       }
+      return date;
+    } catch (error) {
+      console.error('Error parsing date:', error);
+      return new Date();
     }
-    return new Date();
-  });
+  };
+  
+  const [selectedDate, setSelectedDate] = useState<Date>(() => getValidDate(value));
 
   useEffect(() => {
     if (value) {
-      try {
-        const date = new Date(value);
-        if (!isNaN(date.getTime())) {
-          setSelectedDate(date);
-        }
-      } catch (error) {
-        console.error('Error updating date:', error);
-      }
+      const date = getValidDate(value);
+      setSelectedDate(date);
     }
   }, [value]);
 
@@ -72,7 +68,12 @@ export default function DatePicker({ value, onDateChange, placeholder, style }: 
       setShowPicker(false);
     }
     
-    if (date && event.type !== 'dismissed') {
+    if (event?.type === 'dismissed') {
+      setShowPicker(false);
+      return;
+    }
+    
+    if (date) {
       try {
         if (isNaN(date.getTime())) {
           console.error('Invalid date received:', date);
@@ -80,14 +81,12 @@ export default function DatePicker({ value, onDateChange, placeholder, style }: 
         }
         setSelectedDate(date);
         const formattedDate = formatDate(date);
+        console.log('Setting date to:', formattedDate);
         onDateChange(formattedDate);
       } catch (error) {
         console.error('Error in handleDateChange:', error);
+        Alert.alert('Error', 'Failed to set date. Please try again.');
       }
-    }
-    
-    if (event.type === 'dismissed') {
-      setShowPicker(false);
     }
   };
 
@@ -99,10 +98,13 @@ export default function DatePicker({ value, onDateChange, placeholder, style }: 
       if (Platform.OS === 'web' && dateInputRef.current) {
         (dateInputRef.current as any).focus();
       } else {
+        const currentDate = value ? getValidDate(value) : new Date();
+        setSelectedDate(currentDate);
         setShowPicker(true);
       }
     } catch (error) {
       console.error('Error opening picker:', error);
+      Alert.alert('Error', 'Failed to open date picker. Please try again.');
     }
   };
 
@@ -157,35 +159,37 @@ export default function DatePicker({ value, onDateChange, placeholder, style }: 
       </Text>
 
       {Platform.OS === 'ios' ? (
-        <Modal
-          visible={showPicker}
-          transparent={true}
-          animationType="slide"
-          onRequestClose={closePicker}
-        >
-          <View style={styles.modalOverlay}>
-            <View style={styles.modalContent}>
-              <View style={styles.modalHeader}>
-                <Pressable onPress={closePicker}>
-                  <Text style={styles.cancelButton}>Cancel</Text>
-                </Pressable>
-                <Text style={styles.modalTitle}>Select Date</Text>
-                <Pressable onPress={handleDone}>
-                  <Text style={styles.doneButton}>Done</Text>
-                </Pressable>
-              </View>
-              <DateTimePicker
-                value={selectedDate}
-                mode="date"
-                display="spinner"
-                onChange={handleDateChange}
-                style={styles.iosPicker}
-                minimumDate={new Date(2020, 0, 1)}
-                maximumDate={new Date(2030, 11, 31)}
-              />
-            </View>
-          </View>
-        </Modal>
+        showPicker && (
+          <Modal
+            visible={showPicker}
+            transparent={true}
+            animationType="slide"
+            onRequestClose={closePicker}
+          >
+            <Pressable style={styles.modalOverlay} onPress={closePicker}>
+              <Pressable style={styles.modalContent} onPress={(e) => e.stopPropagation()}>
+                <View style={styles.modalHeader}>
+                  <Pressable onPress={closePicker}>
+                    <Text style={styles.cancelButton}>Cancel</Text>
+                  </Pressable>
+                  <Text style={styles.modalTitle}>Select Date</Text>
+                  <Pressable onPress={handleDone}>
+                    <Text style={styles.doneButton}>Done</Text>
+                  </Pressable>
+                </View>
+                <DateTimePicker
+                  value={selectedDate}
+                  mode="date"
+                  display="spinner"
+                  onChange={handleDateChange}
+                  style={styles.iosPicker}
+                  minimumDate={new Date(2020, 0, 1)}
+                  maximumDate={new Date(2030, 11, 31)}
+                />
+              </Pressable>
+            </Pressable>
+          </Modal>
+        )
       ) : (
         showPicker && (
           <DateTimePicker
@@ -193,6 +197,8 @@ export default function DatePicker({ value, onDateChange, placeholder, style }: 
             mode="date"
             display="calendar"
             onChange={handleDateChange}
+            minimumDate={new Date(2020, 0, 1)}
+            maximumDate={new Date(2030, 11, 31)}
           />
         )
       )}
