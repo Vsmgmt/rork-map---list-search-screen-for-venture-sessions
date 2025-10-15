@@ -224,7 +224,10 @@ export default function BoardPreviewModal() {
   };
   
   const handleMessageOwner = async () => {
-    if (!currentUser || !board) return;
+    if (!currentUser || !board || !board.owner) {
+      Alert.alert('Unable to Message', 'Owner information is not available.');
+      return;
+    }
     
     try {
       const conversationId = await createConversation(board.owner.id);
@@ -240,6 +243,7 @@ export default function BoardPreviewModal() {
       }
     } catch (error) {
       console.error('Failed to create conversation:', error);
+      Alert.alert('Error', 'Failed to start conversation. Please try again.');
     }
   };
   
@@ -354,41 +358,47 @@ export default function BoardPreviewModal() {
           </View>
           
           {/* Owner */}
-          <View style={styles.ownerSection}>
-            <Text style={styles.sectionTitle}>Board Owner</Text>
-            
-            <View style={styles.ownerRow}>
-              <View style={styles.ownerAvatarContainer}>
-                <Image
-                  source={{ uri: board.owner.avatar_url || board.owner.avatarUrl }}
-                  style={styles.ownerAvatarLarge}
-                  resizeMode="cover"
-                />
-                {(board.owner.is_verified || board.owner.verified) && (
-                  <View style={styles.verifiedBadge}>
-                    <Check size={12} color="white" />
-                  </View>
-                )}
-              </View>
-              <View style={styles.ownerInfo}>
-                <Text style={styles.ownerName}>{board.owner.name}</Text>
-                <View style={styles.ownerRating}>
-                  <Star size={14} color="#FFD700" fill="#FFD700" />
-                  <Text style={styles.ownerRatingText}>{board.owner.rating?.toFixed(1) || '5.0'}</Text>
-                  <Text style={styles.ownerBoardCount}>• {board.owner.total_boards || board.owner.totalBoards || 0} boards</Text>
+          {board.owner && (
+            <View style={styles.ownerSection}>
+              <Text style={styles.sectionTitle}>Board Owner</Text>
+              
+              <View style={styles.ownerRow}>
+                <View style={styles.ownerAvatarContainer}>
+                  <Image
+                    source={{ uri: board.owner.avatar_url || board.owner.avatarUrl || 'https://via.placeholder.com/60' }}
+                    style={styles.ownerAvatarLarge}
+                    resizeMode="cover"
+                  />
+                  {(board.owner.is_verified || board.owner.verified) && (
+                    <View style={styles.verifiedBadge}>
+                      <Check size={12} color="white" />
+                    </View>
+                  )}
                 </View>
-                <Text style={styles.ownerLocation}>{board.owner.location}</Text>
-                <Text style={styles.ownerJoined}>Member since {new Date(board.owner.joined_date || board.owner.joinedDate).getFullYear()}</Text>
+                <View style={styles.ownerInfo}>
+                  <Text style={styles.ownerName}>{board.owner.name || 'Unknown'}</Text>
+                  <View style={styles.ownerRating}>
+                    <Star size={14} color="#FFD700" fill="#FFD700" />
+                    <Text style={styles.ownerRatingText}>{board.owner.rating?.toFixed(1) || '5.0'}</Text>
+                    <Text style={styles.ownerBoardCount}>• {board.owner.total_boards || board.owner.totalBoards || 0} boards</Text>
+                  </View>
+                  {board.owner.location && (
+                    <Text style={styles.ownerLocation}>{board.owner.location}</Text>
+                  )}
+                  {(board.owner.joined_date || board.owner.joinedDate) && (
+                    <Text style={styles.ownerJoined}>Member since {new Date(board.owner.joined_date || board.owner.joinedDate).getFullYear()}</Text>
+                  )}
+                </View>
+                <Pressable
+                  style={styles.messageOwnerButton}
+                  onPress={handleMessageOwner}
+                >
+                  <MessageCircle size={16} color={Colors.light.tint} />
+                  <Text style={styles.messageOwnerText}>Message Owner</Text>
+                </Pressable>
               </View>
-              <Pressable
-                style={styles.messageOwnerButton}
-                onPress={handleMessageOwner}
-              >
-                <MessageCircle size={16} color={Colors.light.tint} />
-                <Text style={styles.messageOwnerText}>Message Owner</Text>
-              </Pressable>
             </View>
-          </View>
+          )}
           
           {/* Location */}
           <View style={styles.locationSection}>
