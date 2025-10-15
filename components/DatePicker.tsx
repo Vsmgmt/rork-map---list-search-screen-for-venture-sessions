@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -6,6 +6,7 @@ import {
   Pressable,
   Platform,
   Modal,
+  TextInput,
 } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { Calendar } from 'lucide-react-native';
@@ -90,10 +91,16 @@ export default function DatePicker({ value, onDateChange, placeholder, style }: 
     }
   };
 
+  const dateInputRef = useRef<TextInput>(null);
+
   const openPicker = () => {
     console.log('Opening date picker, current date:', selectedDate);
     try {
-      setShowPicker(true);
+      if (Platform.OS === 'web' && dateInputRef.current) {
+        (dateInputRef.current as any).focus();
+      } else {
+        setShowPicker(true);
+      }
     } catch (error) {
       console.error('Error opening picker:', error);
     }
@@ -108,6 +115,39 @@ export default function DatePicker({ value, onDateChange, placeholder, style }: 
     onDateChange(formattedDate);
     closePicker();
   };
+
+  if (Platform.OS === 'web') {
+    return (
+      <View style={[styles.dateButton, style]}>
+        <Calendar size={16} color="#666" />
+        <Text style={[styles.dateText, !value && styles.placeholderText]}>
+          {formatDisplayDate(value)}
+        </Text>
+        <input
+          ref={dateInputRef as any}
+          type="date"
+          value={value}
+          onChange={(e: any) => {
+            const newDate = e.target?.value;
+            if (newDate) {
+              onDateChange(newDate);
+            }
+          }}
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            opacity: 0,
+            width: '100%',
+            height: '100%',
+            cursor: 'pointer',
+          }}
+        />
+      </View>
+    );
+  }
 
   return (
     <Pressable style={[styles.dateButton, style]} onPress={openPicker}>
@@ -142,34 +182,6 @@ export default function DatePicker({ value, onDateChange, placeholder, style }: 
                 style={styles.iosPicker}
                 minimumDate={new Date(2020, 0, 1)}
                 maximumDate={new Date(2030, 11, 31)}
-              />
-            </View>
-          </View>
-        </Modal>
-      ) : Platform.OS === 'web' ? (
-        <Modal
-          visible={showPicker}
-          transparent={true}
-          animationType="fade"
-          onRequestClose={closePicker}
-        >
-          <View style={styles.modalOverlay}>
-            <View style={styles.modalContent}>
-              <View style={styles.modalHeader}>
-                <Pressable onPress={closePicker}>
-                  <Text style={styles.cancelButton}>Cancel</Text>
-                </Pressable>
-                <Text style={styles.modalTitle}>Select Date</Text>
-                <Pressable onPress={handleDone}>
-                  <Text style={styles.doneButton}>Done</Text>
-                </Pressable>
-              </View>
-              <DateTimePicker
-                value={selectedDate}
-                mode="date"
-                display="calendar"
-                onChange={handleDateChange}
-                style={styles.webPicker}
               />
             </View>
           </View>
@@ -273,5 +285,15 @@ const styles = StyleSheet.create({
     height: 300,
     alignSelf: 'center',
     width: '100%',
+  },
+  webDateInput: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    opacity: 0,
+    width: '100%',
+    height: '100%',
   },
 });
