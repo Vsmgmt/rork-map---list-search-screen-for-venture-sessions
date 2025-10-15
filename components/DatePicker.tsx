@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -6,11 +6,10 @@ import {
   Pressable,
   Platform,
   Modal,
-  TextInput,
   Alert,
 } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import { Calendar } from 'lucide-react-native';
+import { Calendar, ChevronLeft, ChevronRight } from 'lucide-react-native';
 
 interface DatePickerProps {
   value: string;
@@ -90,18 +89,12 @@ export default function DatePicker({ value, onDateChange, placeholder, style }: 
     }
   };
 
-  const dateInputRef = useRef<TextInput>(null);
-
   const openPicker = () => {
     console.log('Opening date picker, current date:', selectedDate);
     try {
-      if (Platform.OS === 'web' && dateInputRef.current) {
-        (dateInputRef.current as any).focus();
-      } else {
-        const currentDate = value ? getValidDate(value) : new Date();
-        setSelectedDate(currentDate);
-        setShowPicker(true);
-      }
+      const currentDate = value ? getValidDate(value) : new Date();
+      setSelectedDate(currentDate);
+      setShowPicker(true);
     } catch (error) {
       console.error('Error opening picker:', error);
       Alert.alert('Error', 'Failed to open date picker. Please try again.');
@@ -118,47 +111,16 @@ export default function DatePicker({ value, onDateChange, placeholder, style }: 
     closePicker();
   };
 
-  if (Platform.OS === 'web') {
-    return (
-      <View style={[styles.dateButton, style]}>
+  return (
+    <>
+      <Pressable style={[styles.dateButton, style]} onPress={openPicker}>
         <Calendar size={16} color="#666" />
         <Text style={[styles.dateText, !value && styles.placeholderText]}>
           {formatDisplayDate(value)}
         </Text>
-        <input
-          ref={dateInputRef as any}
-          type="date"
-          value={value}
-          onChange={(e: any) => {
-            const newDate = e.target?.value;
-            if (newDate) {
-              onDateChange(newDate);
-            }
-          }}
-          style={{
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            opacity: 0,
-            width: '100%',
-            height: '100%',
-            cursor: 'pointer',
-          }}
-        />
-      </View>
-    );
-  }
+      </Pressable>
 
-  return (
-    <Pressable style={[styles.dateButton, style]} onPress={openPicker}>
-      <Calendar size={16} color="#666" />
-      <Text style={[styles.dateText, !value && styles.placeholderText]}>
-        {formatDisplayDate(value)}
-      </Text>
-
-      {Platform.OS === 'ios' ? (
+      {(Platform.OS === 'ios' || Platform.OS === 'web') ? (
         showPicker && (
           <Modal
             visible={showPicker}
@@ -177,15 +139,22 @@ export default function DatePicker({ value, onDateChange, placeholder, style }: 
                     <Text style={styles.doneButton}>Done</Text>
                   </Pressable>
                 </View>
-                <DateTimePicker
-                  value={selectedDate}
-                  mode="date"
-                  display="spinner"
-                  onChange={handleDateChange}
-                  style={styles.iosPicker}
-                  minimumDate={new Date(2020, 0, 1)}
-                  maximumDate={new Date(2030, 11, 31)}
-                />
+                {Platform.OS === 'web' ? (
+                  <WebDatePicker
+                    selectedDate={selectedDate}
+                    onDateSelect={setSelectedDate}
+                  />
+                ) : (
+                  <DateTimePicker
+                    value={selectedDate}
+                    mode="date"
+                    display="spinner"
+                    onChange={handleDateChange}
+                    style={styles.iosPicker}
+                    minimumDate={new Date(2020, 0, 1)}
+                    maximumDate={new Date(2030, 11, 31)}
+                  />
+                )}
               </Pressable>
             </Pressable>
           </Modal>
@@ -202,7 +171,108 @@ export default function DatePicker({ value, onDateChange, placeholder, style }: 
           />
         )
       )}
-    </Pressable>
+    </>
+  );
+}
+
+function WebDatePicker({
+  selectedDate,
+  onDateSelect,
+}: {
+  selectedDate: Date;
+  onDateSelect: (date: Date) => void;
+}) {
+  const [currentMonth, setCurrentMonth] = useState(selectedDate.getMonth());
+  const [currentYear, setCurrentYear] = useState(selectedDate.getFullYear());
+
+  const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+  const firstDayOfMonth = new Date(currentYear, currentMonth, 1).getDay();
+
+  const monthNames = [
+    'January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December'
+  ];
+
+  const handlePrevMonth = () => {
+    if (currentMonth === 0) {
+      setCurrentMonth(11);
+      setCurrentYear(currentYear - 1);
+    } else {
+      setCurrentMonth(currentMonth - 1);
+    }
+  };
+
+  const handleNextMonth = () => {
+    if (currentMonth === 11) {
+      setCurrentMonth(0);
+      setCurrentYear(currentYear + 1);
+    } else {
+      setCurrentMonth(currentMonth + 1);
+    }
+  };
+
+  const handleDateSelect = (day: number) => {
+    const newDate = new Date(currentYear, currentMonth, day);
+    onDateSelect(newDate);
+  };
+
+  const renderCalendarDays = () => {
+    const days = [];
+    
+    for (let i = 0; i < firstDayOfMonth; i++) {
+      days.push(
+        <View key={`empty-${i}`} style={styles.calendarDay} />
+      );
+    }
+
+    for (let day = 1; day <= daysInMonth; day++) {
+      const isSelected =
+        day === selectedDate.getDate() &&
+        currentMonth === selectedDate.getMonth() &&
+        currentYear === selectedDate.getFullYear();
+
+      days.push(
+        <Pressable
+          key={day}
+          style={[styles.calendarDay, isSelected && styles.selectedDay]}
+          onPress={() => handleDateSelect(day)}
+        >
+          <Text style={[styles.calendarDayText, isSelected && styles.selectedDayText]}>
+            {day}
+          </Text>
+        </Pressable>
+      );
+    }
+
+    return days;
+  };
+
+  return (
+    <View style={styles.webCalendar}>
+      <View style={styles.calendarHeader}>
+        <Pressable onPress={handlePrevMonth} style={styles.navButton}>
+          <ChevronLeft size={24} color="#007AFF" />
+        </Pressable>
+        <Text style={styles.calendarHeaderText}>
+          {monthNames[currentMonth]} {currentYear}
+        </Text>
+        <Pressable onPress={handleNextMonth} style={styles.navButton}>
+          <ChevronRight size={24} color="#007AFF" />
+        </Pressable>
+      </View>
+
+      <View style={styles.weekDaysRow}>
+        {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day) => (
+          <View key={day} style={styles.weekDay}>
+            <Text style={styles.weekDayText}>{day}</Text>
+          </View>
+        ))}
+      </View>
+
+      <View style={styles.calendarGrid}>
+        {renderCalendarDays()}
+      </View>
+    </View>
   );
 }
 
@@ -301,5 +371,59 @@ const styles = StyleSheet.create({
     opacity: 0,
     width: '100%',
     height: '100%',
+  },
+  webCalendar: {
+    padding: 20,
+  },
+  calendarHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  calendarHeaderText: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#333',
+  },
+  navButton: {
+    padding: 8,
+  },
+  weekDaysRow: {
+    flexDirection: 'row',
+    marginBottom: 10,
+  },
+  weekDay: {
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: 8,
+  },
+  weekDayText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#666',
+  },
+  calendarGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+  },
+  calendarDay: {
+    width: '14.28%',
+    aspectRatio: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 8,
+  },
+  calendarDayText: {
+    fontSize: 16,
+    color: '#333',
+  },
+  selectedDay: {
+    backgroundColor: '#007AFF',
+    borderRadius: 20,
+  },
+  selectedDayText: {
+    color: 'white',
+    fontWeight: '600',
   },
 });
