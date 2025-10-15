@@ -157,6 +157,8 @@ export default function ProUserScreen() {
 
       if (imageType === 'dimensions') {
         await analyzeDimensions(result.assets[0].uri);
+      } else {
+        await analyzePhotoForAllInfo(result.assets[0].uri);
       }
     }
   };
@@ -187,7 +189,119 @@ export default function ProUserScreen() {
 
       if (imageType === 'dimensions') {
         await analyzeDimensions(result.assets[0].uri);
+      } else {
+        await analyzePhotoForAllInfo(result.assets[0].uri);
       }
+    }
+  };
+
+  const analyzePhotoForAllInfo = async (imageUri: string) => {
+    setIsAnalyzingDimensions(true);
+    try {
+      const response = await fetch(imageUri);
+      const blob = await response.blob();
+      const reader = new FileReader();
+      
+      reader.onloadend = async () => {
+        const base64data = reader.result as string;
+        const base64Image = base64data.split(',')[1];
+        
+        try {
+          const aiResponse = await fetch('https://toolkit.rork.com/text/llm/', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              messages: [
+                {
+                  role: 'user',
+                  content: [
+                    {
+                      type: 'text',
+                      text: `Please analyze this surfboard image comprehensively and extract all visible information to auto-fill a rental listing form. Extract and format the following (if visible):\n\n1. Board Name/Brand (e.g., "Channel Islands Rocket", "Lost Puddle Jumper", or generic like "Blue Shortboard")\n2. Board Type (one of: soft-top, shortboard, fish, longboard, sup)\n3. Dimensions in format "L x W x T" (e.g., "6'2 x 19.5 x 2.5")\n4. Volume in liters if visible\n5. Brief description highlighting features, condition, colors, and suitability\n\nFormat your response as:\nNAME: [board name]\nTYPE: [board type]\nDIMENSIONS: [dimensions]\nVOLUME: [volume in liters]\nDESCRIPTION: [detailed description]\n\nIf any field is not visible or unclear, write "NOT_VISIBLE" for that field.`,
+                    },
+                    {
+                      type: 'image',
+                      image: base64Image,
+                    },
+                  ],
+                },
+              ],
+            }),
+          });
+          
+          const result = await aiResponse.json();
+          const completion = result.completion;
+          
+          console.log('🤖 AI Analysis Result:', completion);
+          
+          const nameMatch = completion.match(/NAME:\s*(.+?)(?=\n|$)/i);
+          const typeMatch = completion.match(/TYPE:\s*(.+?)(?=\n|$)/i);
+          const dimensionsMatch = completion.match(/DIMENSIONS:\s*(.+?)(?=\n|$)/i);
+          const volumeMatch = completion.match(/VOLUME:\s*([0-9.]+)/i);
+          const descriptionMatch = completion.match(/DESCRIPTION:\s*([\s\S]+?)(?=\n\n|$)/i);
+          
+          let fieldsUpdated = 0;
+          
+          if (nameMatch && nameMatch[1].trim() !== 'NOT_VISIBLE' && !board.name) {
+            setBoard(prev => ({ ...prev, name: nameMatch[1].trim() }));
+            fieldsUpdated++;
+          }
+          
+          if (typeMatch && typeMatch[1].trim() !== 'NOT_VISIBLE') {
+            const typeValue = typeMatch[1].trim().toLowerCase();
+            const boardTypes = ['soft-top', 'shortboard', 'fish', 'longboard', 'sup'];
+            const matchedType = boardTypes.find(t => 
+              typeValue.includes(t) || typeValue.includes(t.replace('-', ''))
+            );
+            if (matchedType && !board.type) {
+              setBoard(prev => ({ ...prev, type: matchedType as BoardType }));
+              fieldsUpdated++;
+            }
+          }
+          
+          if (dimensionsMatch && dimensionsMatch[1].trim() !== 'NOT_VISIBLE' && !board.dimensions) {
+            setBoard(prev => ({ ...prev, dimensions: dimensionsMatch[1].trim() }));
+            fieldsUpdated++;
+          }
+          
+          if (volumeMatch && !board.volume) {
+            setBoard(prev => ({ ...prev, volume: volumeMatch[1] }));
+            fieldsUpdated++;
+          }
+          
+          if (descriptionMatch && descriptionMatch[1].trim() !== 'NOT_VISIBLE' && !board.description) {
+            setBoard(prev => ({ ...prev, description: descriptionMatch[1].trim() }));
+            fieldsUpdated++;
+          }
+          
+          if (fieldsUpdated > 0) {
+            Alert.alert(
+              'AI Auto-fill Complete! 🤖',
+              `Successfully extracted and filled ${fieldsUpdated} field${fieldsUpdated !== 1 ? 's' : ''} from the photo. Review and adjust as needed.`
+            );
+          } else {
+            Alert.alert(
+              'Photo Uploaded',
+              'Could not extract information from this photo automatically. Please fill in the fields manually.'
+            );
+          }
+        } catch (error) {
+          console.error('AI analysis error:', error);
+          Alert.alert(
+            'Photo Uploaded',
+            'The photo was uploaded but automatic analysis is unavailable. Please fill in the fields manually.'
+          );
+        }
+      };
+      
+      reader.readAsDataURL(blob);
+    } catch (error) {
+      console.error('Image processing error:', error);
+      Alert.alert('Error', 'Failed to process image. Please try again.');
+    } finally {
+      setIsAnalyzingDimensions(false);
     }
   };
 
