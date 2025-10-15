@@ -259,13 +259,15 @@ export default function MapScreen() {
                 <Truck size={16} color="#007AFF" />
               </View>
             )}
-            <View style={styles.boardOwnerAvatar}>
-              <Image
-                source={{ uri: item.owner.avatarUrl }}
-                style={styles.boardAvatarImage}
-                resizeMode="cover"
-              />
-            </View>
+            {item.owner?.avatarUrl || item.owner?.avatar_url ? (
+              <View style={styles.boardOwnerAvatar}>
+                <Image
+                  source={{ uri: item.owner?.avatarUrl || item.owner?.avatar_url }}
+                  style={styles.boardAvatarImage}
+                  resizeMode="cover"
+                />
+              </View>
+            ) : null}
           </View>
         </View>
         <Pressable
