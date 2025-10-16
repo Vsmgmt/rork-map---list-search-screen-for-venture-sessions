@@ -70,6 +70,14 @@ export default function BulkManagementScreen() {
 
   const proUsersQuery = trpc.admin.getProUsers.useQuery();
   const proUsers = proUsersQuery.data || [];
+  
+  console.log('🔍 Pro users query status:', {
+    isLoading: proUsersQuery.isLoading,
+    isError: proUsersQuery.isError,
+    error: proUsersQuery.error,
+    dataLength: proUsers.length,
+    data: proUsers
+  });
 
   // Filter boards by region and search
   const filteredBoards = useMemo(() => {
@@ -482,6 +490,7 @@ export default function BulkManagementScreen() {
                   ) : proUsers.length === 0 ? (
                     <View style={styles.emptyContainer}>
                       <Text style={styles.emptyText}>No pro users found in database</Text>
+                      <Text style={styles.emptyHint}>Go to Admin tab → Setup Database to seed pro users</Text>
                     </View>
                   ) : (
                     <FlatList
@@ -958,5 +967,11 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#666',
     textAlign: 'center',
+  },
+  emptyHint: {
+    fontSize: 12,
+    color: '#999',
+    textAlign: 'center',
+    marginTop: 8,
   },
 });
