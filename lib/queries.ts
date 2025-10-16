@@ -759,7 +759,8 @@ export async function createBoardDirectly(formData: {
   const { data: proUsers, error: proUsersError } = await supabase
     .from('pro_users')
     .select('id')
-    .limit(100);
+    .order('created_at', { ascending: true })
+    .limit(1);
   
   if (proUsersError) {
     console.error('❌ Failed to fetch pro users:', proUsersError);
@@ -771,11 +772,11 @@ export async function createBoardDirectly(formData: {
     throw new Error('No pro users available. Please create pro users first.');
   }
   
-  const randomProUser = proUsers[Math.floor(Math.random() * proUsers.length)];
-  console.log('✅ Selected random pro user:', randomProUser.id);
+  const firstProUser = proUsers[0];
+  console.log('✅ Assigned to first pro user:', firstProUser.id);
   
   const payload = {
-    owner_id: randomProUser.id,
+    owner_id: firstProUser.id,
     short_name: formData.short_name,
     dimensions_detail: formData.dimensions_detail ?? null,
     volume_l: formData.volume_l ?? null,
