@@ -733,3 +733,87 @@ export async function saveApplication(app: {
   if (error) throw error;
   return data;
 }
+
+export async function createBoardDirectly(formData: {
+  short_name: string;
+  dimensions_detail?: string | null;
+  volume_l?: number | null;
+  price_per_day?: number | null;
+  price_per_week?: number | null;
+  price_per_hour?: number | null;
+  price_sale?: number | null;
+  location_city?: string | null;
+  location_country?: string | null;
+  pickup_spot?: string | null;
+  lat?: number | null;
+  lon?: number | null;
+  board_type?: string | null;
+  image_url?: string | null;
+  delivery_available?: boolean | null;
+  delivery_price?: number | null;
+  availability_start?: string | null;
+  availability_end?: string | null;
+}) {
+  console.log('🔵 createBoardDirectly called with:', formData);
+  
+  const { data: proUsers, error: proUsersError } = await supabase
+    .from('pro_users')
+    .select('id')
+    .limit(100);
+  
+  if (proUsersError) {
+    console.error('❌ Failed to fetch pro users:', proUsersError);
+    throw new Error('Failed to fetch pro users: ' + proUsersError.message);
+  }
+  
+  if (!proUsers || proUsers.length === 0) {
+    console.error('❌ No pro users found in database');
+    throw new Error('No pro users available. Please create pro users first.');
+  }
+  
+  const randomProUser = proUsers[Math.floor(Math.random() * proUsers.length)];
+  console.log('✅ Selected random pro user:', randomProUser.id);
+  
+  const payload = {
+    owner_id: randomProUser.id,
+    short_name: formData.short_name,
+    dimensions_detail: formData.dimensions_detail ?? null,
+    volume_l: formData.volume_l ?? null,
+    price_per_day: formData.price_per_day ?? null,
+    price_per_week: formData.price_per_week ?? null,
+    price_per_hour: formData.price_per_hour ?? null,
+    price_sale: formData.price_sale ?? null,
+    location_city: formData.location_city ?? null,
+    location_country: formData.location_country ?? null,
+    pickup_spot: formData.pickup_spot ?? 'TBD',
+    lat: formData.lat ?? 0,
+    lon: formData.lon ?? 0,
+    board_type: formData.board_type ?? 'shortboard',
+    image_url: formData.image_url ?? 'https://via.placeholder.com/300x400?text=Board',
+    delivery_available: formData.delivery_available ?? false,
+    delivery_price: formData.delivery_price ?? null,
+    availability_start: formData.availability_start ?? null,
+    availability_end: formData.availability_end ?? null,
+  };
+  
+  console.log('📤 Inserting board with payload:', payload);
+  
+  const { data, error } = await supabase
+    .from('boards')
+    .insert(payload)
+    .select()
+    .single();
+  
+  if (error) {
+    console.error('❌ Insert board error:', {
+      code: error.code,
+      message: error.message,
+      details: (error as any).details,
+      hint: (error as any).hint,
+    });
+    throw new Error(error.message || 'Failed to create board');
+  }
+  
+  console.log('✅ Board created successfully:', data);
+  return data;
+}

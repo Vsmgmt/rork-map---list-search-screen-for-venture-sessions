@@ -45,6 +45,7 @@ import DatePicker from '@/components/DatePicker';
 import { useBoards } from '@/src/context/boards';
 import { useBookings } from '@/src/context/bookings';
 import { router } from 'expo-router';
+import { createBoardDirectly } from '@/lib/queries';
 
 interface BoardImages {
   deckFront: string | null;
@@ -456,7 +457,6 @@ export default function ProUserScreen() {
     
     try {
       if (editingBoard) {
-        // Update existing board
         await updateBoard(editingBoard.id, board);
         
         router.push({
@@ -471,7 +471,27 @@ export default function ProUserScreen() {
         
         setEditingBoard(null);
       } else {
-        // Add new board
+        console.log('🚀 Starting board submission to Supabase...');
+        
+        const supabaseBoard = await createBoardDirectly({
+          short_name: board.name,
+          dimensions_detail: board.dimensions,
+          volume_l: board.volume ? parseFloat(board.volume) : null,
+          price_per_day: board.pricePerDay ? parseFloat(board.pricePerDay) : null,
+          price_per_week: board.pricePerWeek ? parseFloat(board.pricePerWeek) : null,
+          location_city: board.location,
+          location_country: null,
+          pickup_spot: board.pickupSpot || 'TBD',
+          board_type: board.type,
+          image_url: board.images.deckFront || 'https://via.placeholder.com/300x400?text=No+Image',
+          delivery_available: board.deliveryAvailable,
+          delivery_price: board.deliveryPrice ? parseFloat(board.deliveryPrice) : null,
+          availability_start: board.availableStart,
+          availability_end: board.availableEnd,
+        });
+        
+        console.log('✅ Board created in Supabase:', supabaseBoard);
+        
         const boardId = await addBoard(board);
         
         router.push({
@@ -480,15 +500,15 @@ export default function ProUserScreen() {
             type: 'board_added',
             boardId: boardId,
             boardName: board.name,
-            message: 'Your board has been successfully added and is now available for rent!'
+            message: 'Your board has been successfully added to Supabase and is now available for rent!'
           }
         });
       }
       
       resetForm();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to save board:', error);
-      Alert.alert('Error', 'Failed to save board. Please try again.');
+      Alert.alert('Error', error.message || 'Failed to save board. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
