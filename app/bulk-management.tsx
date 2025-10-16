@@ -9,6 +9,7 @@ import {
   Alert,
   FlatList,
   Switch,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { 
@@ -27,9 +28,10 @@ import {
   EyeOff
 } from 'lucide-react-native';
 import { useBoards } from '@/src/context/boards';
-import { Board } from '@/src/types/board';
+import { Board, ProUser } from '@/src/types/board';
 import Colors from '@/constants/colors';
 import { router } from 'expo-router';
+import { trpc } from '@/lib/trpc';
 
 interface RegionData {
   name: string;
@@ -38,54 +40,7 @@ interface RegionData {
   activeListings: number;
 }
 
-interface ProUser {
-  id: string;
-  name: string;
-  email: string;
-  region: string;
-  boardsManaged: number;
-  totalRevenue: number;
-  joinDate: string;
-}
 
-const MOCK_PRO_USERS: ProUser[] = [
-  {
-    id: 'pro-1',
-    name: 'Jake Martinez',
-    email: 'jake@surfshop.com',
-    region: 'San Diego',
-    boardsManaged: 24,
-    totalRevenue: 8450,
-    joinDate: '2024-01-15'
-  },
-  {
-    id: 'pro-2',
-    name: 'Sarah Chen',
-    email: 'sarah@oceanrentals.com',
-    region: 'Santa Cruz',
-    boardsManaged: 18,
-    totalRevenue: 6200,
-    joinDate: '2024-02-20'
-  },
-  {
-    id: 'pro-3',
-    name: 'Miguel Santos',
-    email: 'miguel@baliboards.com',
-    region: 'Bali',
-    boardsManaged: 31,
-    totalRevenue: 12300,
-    joinDate: '2023-11-08'
-  },
-  {
-    id: 'pro-4',
-    name: 'Emma Wilson',
-    email: 'emma@goldcoastsurf.com',
-    region: 'Gold Coast',
-    boardsManaged: 22,
-    totalRevenue: 7800,
-    joinDate: '2024-03-10'
-  }
-];
 
 const REGIONS = [
   'All Regions',
@@ -112,6 +67,9 @@ export default function BulkManagementScreen() {
   const [bulkAction, setBulkAction] = useState<'none' | 'price' | 'availability' | 'assign'>('none');
   const [bulkPrice, setBulkPrice] = useState('');
   const [selectedProUser, setSelectedProUser] = useState<string>('');
+
+  const proUsersQuery = trpc.admin.getProUsers.useQuery();
+  const proUsers = proUsersQuery.data || [];
 
   // Filter boards by region and search
   const filteredBoards = useMemo(() => {
@@ -211,7 +169,7 @@ export default function BulkManagementScreen() {
           Alert.alert('No User Selected', 'Please select a pro user to assign boards to.');
           return;
         }
-        const proUser = MOCK_PRO_USERS.find(user => user.id === selectedProUser);
+        const proUser = proUsers.find(user => user.id === selectedProUser);
         Alert.alert(
           'Assign Boards',
           `Assign ${selectedBoards.size} boards to ${proUser?.name}?`,
@@ -342,30 +300,37 @@ export default function BulkManagementScreen() {
     </TouchableOpacity>
   );
 
-  const renderProUserCard = ({ item: user }: { item: ProUser }) => (
-    <TouchableOpacity 
-      style={[styles.proUserCard, selectedProUser === user.id && styles.proUserCardSelected]}
-      onPress={() => setSelectedProUser(selectedProUser === user.id ? '' : user.id)}
-    >
-      <View style={styles.proUserHeader}>
-        <View>
-          <Text style={styles.proUserName}>{user.name}</Text>
-          <Text style={styles.proUserEmail}>{user.email}</Text>
+  const renderProUserCard = ({ item: user }: { item: ProUser }) => {
+    const userBoards = boards.filter(b => b.owner?.id === user.id);
+    const estimatedRevenue = userBoards.reduce((sum, b) => sum + (b.price_per_day || 0) * 30, 0);
+    
+    return (
+      <TouchableOpacity 
+        style={[styles.proUserCard, selectedProUser === user.id && styles.proUserCardSelected]}
+        onPress={() => setSelectedProUser(selectedProUser === user.id ? '' : user.id)}
+      >
+        <View style={styles.proUserHeader}>
+          <View>
+            <Text style={styles.proUserName}>{user.name}</Text>
+            <Text style={styles.proUserEmail}>{user.email}</Text>
+          </View>
+          
+          <View style={styles.proUserStats}>
+            <Text style={styles.proUserRevenue}>${estimatedRevenue.toLocaleString()}</Text>
+            <Text style={styles.proUserBoards}>{userBoards.length} boards</Text>
+          </View>
         </View>
         
-        <View style={styles.proUserStats}>
-          <Text style={styles.proUserRevenue}>${user.totalRevenue.toLocaleString()}</Text>
-          <Text style={styles.proUserBoards}>{user.boardsManaged} boards</Text>
+        <View style={styles.proUserMeta}>
+          <MapPin size={14} color="#666" />
+          <Text style={styles.proUserRegion}>{user.location}</Text>
+          {user.joined_date && (
+            <Text style={styles.proUserJoinDate}>• Joined {new Date(user.joined_date).toLocaleDateString()}</Text>
+          )}
         </View>
-      </View>
-      
-      <View style={styles.proUserMeta}>
-        <MapPin size={14} color="#666" />
-        <Text style={styles.proUserRegion}>{user.region}</Text>
-        <Text style={styles.proUserJoinDate}>• Joined {new Date(user.joinDate).toLocaleDateString()}</Text>
-      </View>
-    </TouchableOpacity>
-  );
+      </TouchableOpacity>
+    );
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -509,15 +474,26 @@ export default function BulkManagementScreen() {
               {bulkAction === 'assign' && (
                 <View style={styles.bulkActionInput}>
                   <Text style={styles.inputLabel}>Select Pro User:</Text>
-                  <FlatList
-                    data={MOCK_PRO_USERS}
-                    renderItem={renderProUserCard}
-                    keyExtractor={(item) => item.id}
-                    style={styles.proUsersList}
-                  />
+                  {proUsersQuery.isLoading ? (
+                    <View style={styles.loadingContainer}>
+                      <ActivityIndicator size="small" color={Colors.light.tint} />
+                      <Text style={styles.loadingText}>Loading pro users...</Text>
+                    </View>
+                  ) : proUsers.length === 0 ? (
+                    <View style={styles.emptyContainer}>
+                      <Text style={styles.emptyText}>No pro users found in database</Text>
+                    </View>
+                  ) : (
+                    <FlatList
+                      data={proUsers}
+                      renderItem={renderProUserCard}
+                      keyExtractor={(item) => item.id}
+                      style={styles.proUsersList}
+                    />
+                  )}
                   {selectedProUser && (
                     <TouchableOpacity style={styles.applyButton} onPress={handleBulkAction}>
-                      <Text style={styles.applyButtonText}>Assign to {MOCK_PRO_USERS.find(u => u.id === selectedProUser)?.name}</Text>
+                      <Text style={styles.applyButtonText}>Assign to {proUsers.find(u => u.id === selectedProUser)?.name}</Text>
                     </TouchableOpacity>
                   )}
                 </View>
@@ -958,5 +934,29 @@ const styles = StyleSheet.create({
   statText: {
     fontSize: 12,
     color: '#666',
+  },
+  loadingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 20,
+    gap: 12,
+  },
+  loadingText: {
+    fontSize: 14,
+    color: '#666',
+  },
+  emptyContainer: {
+    padding: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#f8f9fa',
+    borderRadius: 8,
+    marginBottom: 12,
+  },
+  emptyText: {
+    fontSize: 14,
+    color: '#666',
+    textAlign: 'center',
   },
 });
