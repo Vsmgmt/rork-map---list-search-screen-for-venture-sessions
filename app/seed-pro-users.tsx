@@ -11,16 +11,22 @@ export default function SeedProUsersScreen() {
   const [error, setError] = useState<string | null>(null);
 
   const handleSeed = async () => {
+    console.log('🚀 Seed button pressed');
     setLoading(true);
     setError(null);
     setResult(null);
 
     try {
+      console.log('📞 Calling seedFiveProUsers()...');
       const seedResult = await seedFiveProUsers();
+      console.log('✅ Seed result:', seedResult);
       setResult(seedResult);
       Alert.alert('Success', seedResult.message);
     } catch (err) {
+      console.error('❌ Seed error:', err);
       const errorMessage = err instanceof Error ? err.message : 'Failed to seed users';
+      const errorStack = err instanceof Error ? err.stack : '';
+      console.error('Error stack:', errorStack);
       setError(errorMessage);
       Alert.alert('Error', errorMessage);
     } finally {
