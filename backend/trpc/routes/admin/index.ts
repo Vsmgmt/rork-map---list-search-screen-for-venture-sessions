@@ -3,24 +3,26 @@ import { publicProcedure } from '@/backend/trpc/create-context';
 import { db } from '@/backend/db';
 
 export const getStatsRoute = publicProcedure
-  .query(() => {
+  .query(async () => {
     console.log('Getting admin stats');
-    return db.getStats();
+    return await db.getStats();
   });
 
 export const getProUsersRoute = publicProcedure
-  .query(() => {
-    console.log('Getting pro users');
-    return db.getProUsers();
+  .query(async () => {
+    console.log('Getting pro users from database...');
+    const proUsers = await db.getProUsers();
+    console.log(`✅ Found ${proUsers.length} pro users in database`);
+    return proUsers;
   });
 
 export const getProUserByIdRoute = publicProcedure
   .input(z.object({
     id: z.string()
   }))
-  .query(({ input }) => {
+  .query(async ({ input }) => {
     console.log('Getting pro user by ID:', input.id);
-    const user = db.getProUserById(input.id);
+    const user = await db.getProUserById(input.id);
     if (!user) {
       throw new Error('Pro user not found');
     }
@@ -42,20 +44,20 @@ export const updateUserRoute = publicProcedure
     location: z.string().optional(),
     avatarUrl: z.string().optional(),
   }))
-  .mutation(({ input }) => {
+  .mutation(async ({ input }) => {
     console.log('🔄 Admin updateUser called with:', input);
     
-    // Check if user exists before updating
-    const existingUser = db.getProUserById(input.userId);
+    const existingUser = await db.getProUserById(input.userId);
     if (!existingUser) {
       console.error('❌ Pro user not found with ID:', input.userId);
-      console.log('📋 Available pro users:', db.getProUsers().map((u: any) => ({ id: u.id, name: u.name })));
+      const allUsers = await db.getProUsers();
+      console.log('📋 Available pro users:', allUsers.map((u: any) => ({ id: u.id, name: u.name })));
       throw new Error(`Pro user with ID ${input.userId} not found`);
     }
     
     console.log('✅ Found existing pro user:', { id: existingUser.id, name: existingUser.name });
     
-    const result = db.updateUser(input.userId, input);
+    const result = await db.updateUser(input.userId, input);
     
     if (!result) {
       console.error('❌ Failed to update user in database');
@@ -67,9 +69,9 @@ export const updateUserRoute = publicProcedure
   });
 
 export const regenerateSeedDataRoute = publicProcedure
-  .mutation(() => {
+  .mutation(async () => {
     console.log('Regenerating seed data...');
-    return db.regenerateSeedData();
+    return await db.regenerateSeedData();
   });
 
 export const getAllUsersRoute = publicProcedure
@@ -77,14 +79,13 @@ export const getAllUsersRoute = publicProcedure
     console.log('Getting all users from database...');
     
     try {
-      // Handle different database types
       if ('getProUsers' in db && typeof db.getProUsers === 'function') {
-        const proUsers = db.getProUsers();
+        const proUsers = await db.getProUsers();
         console.log(`Found ${proUsers.length} pro users in database`);
         
         return {
           proUsers,
-          regularUsers: [], // Regular users are not stored in backend database
+          regularUsers: [],
           totalUsers: proUsers.length
         };
       } else {
