@@ -113,8 +113,9 @@ export default function ProUserScreen() {
   const { refetchBoards } = useBoardsBackend();
   const { bookings, isLoading: bookingsLoading, getTotalRevenue, getBookingsCount, getBookingsByStatus, updateBookingStatus } = useBookings();
   
-  // Fetch pro users for owner selection
-  const { data: proUsers = [], isLoading: proUsersLoading } = trpc.admin.getProUsers.useQuery();
+  // Fetch all users for owner selection (changed from pro users only)
+  const { data: allUsersResponse, isLoading: proUsersLoading } = trpc.admin.getAllUsers.useQuery();
+  const proUsers = allUsersResponse?.allUsers || [];
   
   const [activeTab, setActiveTab] = useState<'dashboard' | 'add-board' | 'bookings' | 'my-boards'>('dashboard');
   const [searchQuery, setSearchQuery] = useState('');
@@ -1317,25 +1318,25 @@ export default function ProUserScreen() {
           </View>
 
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>👤 Owner (Pro User) * {board.ownerId && '✓'}</Text>
+            <Text style={styles.label}>👤 Owner (User) * {board.ownerId && '✓'}</Text>
             {proUsersLoading ? (
               <View style={styles.dropdown}>
-                <Text style={styles.dropdownText}>Loading pro users...</Text>
+                <Text style={styles.dropdownText}>Loading users...</Text>
               </View>
             ) : proUsers.length === 0 ? (
               <View style={styles.noProUsersContainer}>
                 <View style={styles.dropdown}>
-                  <Text style={styles.dropdownText}>⚠️ No pro users found</Text>
+                  <Text style={styles.dropdownText}>⚠️ No users found</Text>
                 </View>
                 <Text style={styles.noProUsersHint}>
-                  You need to create pro users first before adding boards.
+                  You need to create users first before adding boards.
                 </Text>
                 <TouchableOpacity 
                   style={styles.createProUsersButton}
                   onPress={() => router.push('/data-management')}
                 >
                   <Users size={16} color="white" />
-                  <Text style={styles.createProUsersButtonText}>Create Pro Users</Text>
+                  <Text style={styles.createProUsersButtonText}>Seed Database</Text>
                 </TouchableOpacity>
               </View>
             ) : (
