@@ -73,7 +73,20 @@ class SupabaseDatabase {
 
     const { data, error } = await query;
     if (error) throw error;
-    return data || [];
+    
+    // Map database fields to application fields and construct owner object
+    return (data || []).map(board => ({
+      ...board,
+      type: board.board_type,
+      imageUrl: board.image_url || (board.images && board.images[0]) || '',
+      owner: board.owner_id ? {
+        id: board.owner_id,
+        name: board.owner_name || 'Unknown',
+        avatarUrl: board.owner_avatar || '',
+        avatar_url: board.owner_avatar || '',
+        rating: board.owner_rating || 0,
+      } : undefined,
+    }));
   }
 
   async getBoardById(id: string): Promise<Board | undefined> {
@@ -83,8 +96,22 @@ class SupabaseDatabase {
       .eq('id', id)
       .single();
     
-    if (error && error.code !== 'PGRST116') throw error; // PGRST116 is "not found"
-    return data || undefined;
+    if (error && error.code !== 'PGRST116') throw error;
+    if (!data) return undefined;
+    
+    // Map database fields to application fields and construct owner object
+    return {
+      ...data,
+      type: data.board_type,
+      imageUrl: data.image_url || (data.images && data.images[0]) || '',
+      owner: data.owner_id ? {
+        id: data.owner_id,
+        name: data.owner_name || 'Unknown',
+        avatarUrl: data.owner_avatar || '',
+        avatar_url: data.owner_avatar || '',
+        rating: data.owner_rating || 0,
+      } : undefined,
+    };
   }
 
   async addBoard(board: Omit<Board, 'id'> | Board): Promise<Board> {
@@ -96,6 +123,16 @@ class SupabaseDatabase {
       newBoard = { ...board, id };
     }
     
+    // Ensure owner has complete data from database
+    let ownerData = newBoard.owner;
+    if (ownerData && ownerData.id) {
+      const fullOwner = await this.getProUserById(ownerData.id);
+      if (fullOwner) {
+        ownerData = fullOwner;
+        newBoard.owner = fullOwner;
+      }
+    }
+    
     // Map the Board object to database schema
     const dbBoard = {
       id: newBoard.id,
@@ -105,10 +142,11 @@ class SupabaseDatabase {
       price_per_day: newBoard.price_per_day,
       description: newBoard.dimensions_detail || '',
       images: [newBoard.imageUrl || ''],
-      owner_id: newBoard.owner?.id || '',
-      owner_name: newBoard.owner?.name || '',
-      owner_avatar: newBoard.owner?.avatarUrl || '',
-      owner_rating: newBoard.owner?.rating || 0,
+      image_url: newBoard.imageUrl || '',
+      owner_id: ownerData?.id || '',
+      owner_name: ownerData?.name || '',
+      owner_avatar: ownerData?.avatarUrl || ownerData?.avatar_url || '',
+      owner_rating: ownerData?.rating || 0,
       owner_reviews_count: 0,
       rating: 0,
       reviews_count: 0,
@@ -129,7 +167,7 @@ class SupabaseDatabase {
     }
     
     console.log('✅ Board inserted successfully:', data);
-    return newBoard; // Return the original format
+    return newBoard;
   }
 
   // Bookings methods
@@ -278,7 +316,12 @@ class SupabaseDatabase {
       .select('*');
     
     if (error) throw error;
-    return data || [];
+    
+    // Map database fields to application fields
+    return (data || []).map(user => ({
+      ...user,
+      avatarUrl: user.avatar_url,
+    }));
   }
 
   async getProUserById(id: string): Promise<ProUser | undefined> {
@@ -289,7 +332,13 @@ class SupabaseDatabase {
       .single();
     
     if (error && error.code !== 'PGRST116') throw error;
-    return data || undefined;
+    if (!data) return undefined;
+    
+    // Map database fields to application fields
+    return {
+      ...data,
+      avatarUrl: data.avatar_url,
+    };
   }
 
   async createProUser(userData: Omit<ProUser, 'id'>): Promise<ProUser> {
