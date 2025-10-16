@@ -8,10 +8,24 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 CREATE TABLE IF NOT EXISTS boards (
   id TEXT PRIMARY KEY,
   short_name TEXT NOT NULL,
-  location TEXT NOT NULL,
-  board_type TEXT NOT NULL,
+  location TEXT,
+  location_city TEXT,
+  location_country TEXT,
+  board_type TEXT,
   price_per_day DECIMAL(10,2),
+  price_per_week DECIMAL(10,2),
+  price_per_hour DECIMAL(10,2),
+  price_sale DECIMAL(10,2),
+  dimensions_detail TEXT,
+  volume_l DECIMAL(10,2),
   description TEXT,
+  pickup_spot TEXT,
+  lat DECIMAL(10,6),
+  lon DECIMAL(10,6),
+  delivery_available BOOLEAN DEFAULT false,
+  delivery_price DECIMAL(10,2),
+  availability_start TIMESTAMP WITH TIME ZONE,
+  availability_end TIMESTAMP WITH TIME ZONE,
   images TEXT[], -- Array of image URLs (legacy)
   image_url TEXT, -- Primary board image URL
   image_path TEXT, -- Storage path for the image

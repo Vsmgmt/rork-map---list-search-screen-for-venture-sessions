@@ -401,6 +401,17 @@ export default function AdminScreen() {
             <Text style={styles.statLabel}>Database Schema</Text>
           </Pressable>
         </View>
+        
+        <View style={styles.statsContainer}>
+          <Pressable 
+            style={[styles.statCard, { backgroundColor: '#fff3e0' }]}
+            onPress={() => router.push('/run-migration')}
+          >
+            <Database size={24} color="#ff9800" />
+            <Text style={styles.statValue}>Migrate</Text>
+            <Text style={styles.statLabel}>Add Board Columns</Text>
+          </Pressable>
+        </View>
 
         <View style={styles.statsContainer}>
           <View style={styles.statCard}>

@@ -805,12 +805,21 @@ export async function createBoardDirectly(formData: {
     .single();
   
   if (error) {
-    console.error('❌ Insert board error:', {
+    console.error('❌ Insert board error:', error);
+    console.error('Error details:', {
       code: error.code,
       message: error.message,
       details: (error as any).details,
       hint: (error as any).hint,
     });
+    
+    // Provide a more helpful error message
+    if (error.message.includes('lat') || error.message.includes('lon') || error.message.includes('column')) {
+      throw new Error(
+        'Database schema needs to be updated. Please run the migration script at backend/db/migration-add-board-columns.sql in your Supabase SQL Editor.'
+      );
+    }
+    
     throw new Error(error.message || 'Failed to create board');
   }
   
