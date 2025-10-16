@@ -1,5 +1,5 @@
 import { router, publicProcedure } from '@/backend/trpc/create-context';
-import db from '@/backend/db/memory-db';
+import { db } from '@/backend/db';
 import { z } from 'zod';
 import { addBoardRoute, updateBoardRoute, deleteBoardRoute } from './manage';
 
