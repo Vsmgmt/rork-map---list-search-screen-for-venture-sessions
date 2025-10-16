@@ -273,9 +273,14 @@ class SupabaseDatabase {
       .from('regular_users')
       .select('*');
     
-    if (error) throw error;
+    if (error) {
+      console.error('❌ Error fetching regular users from Supabase:', error);
+      throw error;
+    }
     
-    // Map database fields to application fields
+    console.log(`✅ Fetched ${(data || []).length} regular users from Supabase`);
+    
+    // Map database fields to application fields with both camelCase and snake_case
     return (data || []).map(user => ({
       id: user.id,
       name: user.name,
@@ -283,8 +288,10 @@ class SupabaseDatabase {
       phone: user.phone,
       location: user.location,
       avatarUrl: user.avatar_url,
+      avatar_url: user.avatar_url,
       type: user.user_type,
-      joinedDate: user.joined_date
+      joinedDate: user.joined_date,
+      joined_date: user.joined_date
     }));
   }
 
@@ -376,12 +383,18 @@ class SupabaseDatabase {
       .from('pro_users')
       .select('*');
     
-    if (error) throw error;
+    if (error) {
+      console.error('❌ Error fetching pro users from Supabase:', error);
+      throw error;
+    }
     
-    // Map database fields to application fields
+    console.log(`✅ Fetched ${(data || []).length} pro users from Supabase`);
+    
+    // Map database fields to application fields with both camelCase and snake_case
     return (data || []).map(user => ({
       ...user,
       avatarUrl: user.avatar_url,
+      avatar_url: user.avatar_url,
     }));
   }
 
