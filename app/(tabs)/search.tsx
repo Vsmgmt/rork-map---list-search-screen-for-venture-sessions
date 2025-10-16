@@ -57,7 +57,7 @@ export default function SearchScreen() {
   const { boards: backendBoards, isLoading: loadingBoards } = useBoardsBackend();
 
   const [searchMode, setSearchMode] = useState<'boards' | 'users'>('boards');
-  const { data: allUsers, isLoading: loadingUsers } = trpc.users.getAllRegular.useQuery();
+  const { data: allUsers, isLoading: loadingUsers } = trpc.admin.getAllUsers.useQuery();
 
   const [boards, setBoards] = useState<Board[]>([]);
   const [filtered, setFiltered] = useState<Board[]>([]);

@@ -79,31 +79,20 @@ export const getAllUsersRoute = publicProcedure
     console.log('Getting all users from database...');
     
     try {
-      if ('getProUsers' in db && typeof db.getProUsers === 'function') {
-        const proUsers = await db.getProUsers();
-        console.log(`Found ${proUsers.length} pro users in database`);
-        
-        return {
-          proUsers,
-          regularUsers: [],
-          totalUsers: proUsers.length
-        };
-      } else {
-        // For SQLite or other databases, we might need different approach
-        console.log('Database does not have getProUsers method');
-        return {
-          proUsers: [],
-          regularUsers: [],
-          totalUsers: 0
-        };
-      }
+      const proUsers = await db.getProUsers();
+      const regularUsers = await db.getAllRegularUsers();
+      
+      console.log(`Found ${proUsers.length} pro users and ${regularUsers.length} regular users in database`);
+      
+      const allUsers = [
+        ...proUsers.map((u: any) => ({ ...u, type: 'pro' })),
+        ...regularUsers.map((u: any) => ({ ...u, type: 'regular' }))
+      ];
+      
+      return allUsers;
     } catch (error) {
       console.error('Error getting users:', error);
-      return {
-        proUsers: [],
-        regularUsers: [],
-        totalUsers: 0
-      };
+      return [];
     }
   });
 
