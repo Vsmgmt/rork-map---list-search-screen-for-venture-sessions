@@ -1,6 +1,7 @@
 // backend/trpc/app-router.ts
 import { initTRPC } from "@trpc/server";
 import { boardsRouter } from './routes/boards/get';
+import { addBoardRoute } from './routes/boards/manage';
 import { 
   getAllRegularUsersRoute,
   getRegularUserByIdRoute,
@@ -43,7 +44,10 @@ export const router = t.router;
 export const publicProcedure = t.procedure;
 
 export const appRouter = router({
-  boards: boardsRouter,
+  boards: router({
+    ...boardsRouter._def.procedures,
+    add: addBoardRoute,
+  }),
   users: router({
     getAllRegular: getAllRegularUsersRoute,
     getRegularById: getRegularUserByIdRoute,

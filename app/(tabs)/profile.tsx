@@ -50,6 +50,7 @@ import {
   Edit,
 } from 'lucide-react-native';
 import { useUser } from '@/src/context/user';
+import { trpc } from '@/lib/trpc';
 import { getProUsers } from '@/src/data/seed';
 import Colors from '@/constants/colors';
 import { router } from 'expo-router';
@@ -112,6 +113,8 @@ export default function ProfileScreen() {
   const [isAnalyzingDimensions, setIsAnalyzingDimensions] = useState(false);
   const [showTypeDropdown, setShowTypeDropdown] = useState(false);
   const [showLocationDropdown, setShowLocationDropdown] = useState(false);
+  const [showOwnerDropdown, setShowOwnerDropdown] = useState(false);
+  const [selectedOwner, setSelectedOwner] = useState<string>('');
   
   const [board, setBoard] = useState<NewBoard>({
     name: '',
@@ -133,6 +136,9 @@ export default function ProfileScreen() {
       dimensions: null,
     },
   });
+
+  const proUsersQuery = trpc.admin.getProUsers.useQuery();
+  const addBoardMutation = trpc.boards.add.useMutation();
   
   const insets = useSafeAreaInsets();
 
@@ -270,11 +276,266 @@ export default function ProfileScreen() {
         );
         
       case 'add-board':
+        const availableProUsers = proUsersQuery.data || [];
         return (
-          <View style={styles.addBoardContent}>
-            <Text style={styles.comingSoonText}>Add Board functionality coming soon!</Text>
-            <Text style={styles.comingSoonSubtext}>This will include the full board creation form with AI-powered features.</Text>
-          </View>
+          <ScrollView style={styles.addBoardForm} showsVerticalScrollIndicator={false}>
+            {/* Owner Selection */}
+            <View style={styles.formGroup}>
+              <Text style={styles.formLabel}>Owner *</Text>
+              <Pressable
+                style={styles.dropdown}
+                onPress={() => setShowOwnerDropdown(!showOwnerDropdown)}
+              >
+                <Text style={styles.dropdownText}>
+                  {selectedOwner ? availableProUsers.find((u: any) => u.id === selectedOwner)?.name : 'Select Pro User'}
+                </Text>
+                <ChevronRight size={20} color="#666" style={{ transform: [{ rotate: showOwnerDropdown ? '90deg' : '0deg' }] }} />
+              </Pressable>
+              {showOwnerDropdown && (
+                <View style={styles.dropdownMenu}>
+                  {availableProUsers.map((user: any) => (
+                    <Pressable
+                      key={user.id}
+                      style={styles.dropdownItem}
+                      onPress={() => {
+                        setSelectedOwner(user.id);
+                        setShowOwnerDropdown(false);
+                      }}
+                    >
+                      <Text style={styles.dropdownItemText}>{user.name}</Text>
+                      <Text style={styles.dropdownItemSubtext}>{user.location}</Text>
+                    </Pressable>
+                  ))}
+                </View>
+              )}
+            </View>
+
+            {/* Board Name */}
+            <View style={styles.formGroup}>
+              <Text style={styles.formLabel}>Board Name *</Text>
+              <TextInput
+                style={styles.formInput}
+                value={board.name}
+                onChangeText={(text) => setBoard(prev => ({ ...prev, name: text }))}
+                placeholder="e.g., Wavestorm 8'"
+                placeholderTextColor="#999"
+              />
+            </View>
+
+            {/* Board Type */}
+            <View style={styles.formGroup}>
+              <Text style={styles.formLabel}>Board Type *</Text>
+              <Pressable
+                style={styles.dropdown}
+                onPress={() => setShowTypeDropdown(!showTypeDropdown)}
+              >
+                <Text style={styles.dropdownText}>
+                  {BOARD_TYPES.find(t => t.value === board.type)?.label}
+                </Text>
+                <ChevronRight size={20} color="#666" style={{ transform: [{ rotate: showTypeDropdown ? '90deg' : '0deg' }] }} />
+              </Pressable>
+              {showTypeDropdown && (
+                <View style={styles.dropdownMenu}>
+                  {BOARD_TYPES.map((type) => (
+                    <Pressable
+                      key={type.value}
+                      style={styles.dropdownItem}
+                      onPress={() => {
+                        setBoard(prev => ({ ...prev, type: type.value }));
+                        setShowTypeDropdown(false);
+                      }}
+                    >
+                      <Text style={styles.dropdownItemText}>{type.label}</Text>
+                    </Pressable>
+                  ))}
+                </View>
+              )}
+            </View>
+
+            {/* Location */}
+            <View style={styles.formGroup}>
+              <Text style={styles.formLabel}>Location *</Text>
+              <Pressable
+                style={styles.dropdown}
+                onPress={() => setShowLocationDropdown(!showLocationDropdown)}
+              >
+                <Text style={styles.dropdownText}>{board.location}</Text>
+                <ChevronRight size={20} color="#666" style={{ transform: [{ rotate: showLocationDropdown ? '90deg' : '0deg' }] }} />
+              </Pressable>
+              {showLocationDropdown && (
+                <View style={styles.dropdownMenu}>
+                  <ScrollView style={styles.dropdownScroll}>
+                    {LOCATIONS.map((loc) => (
+                      <Pressable
+                        key={loc}
+                        style={styles.dropdownItem}
+                        onPress={() => {
+                          setBoard(prev => ({ ...prev, location: loc }));
+                          setShowLocationDropdown(false);
+                        }}
+                      >
+                        <Text style={styles.dropdownItemText}>{loc}</Text>
+                      </Pressable>
+                    ))}
+                  </ScrollView>
+                </View>
+              )}
+            </View>
+
+            {/* Pricing */}
+            <View style={styles.formRow}>
+              <View style={styles.formGroupHalf}>
+                <Text style={styles.formLabel}>Price/Day *</Text>
+                <TextInput
+                  style={styles.formInput}
+                  value={board.pricePerDay}
+                  onChangeText={(text) => setBoard(prev => ({ ...prev, pricePerDay: text }))}
+                  placeholder="35"
+                  keyboardType="numeric"
+                  placeholderTextColor="#999"
+                />
+              </View>
+              <View style={styles.formGroupHalf}>
+                <Text style={styles.formLabel}>Price/Week *</Text>
+                <TextInput
+                  style={styles.formInput}
+                  value={board.pricePerWeek}
+                  onChangeText={(text) => setBoard(prev => ({ ...prev, pricePerWeek: text }))}
+                  placeholder="175"
+                  keyboardType="numeric"
+                  placeholderTextColor="#999"
+                />
+              </View>
+            </View>
+
+            {/* Dimensions */}
+            <View style={styles.formGroup}>
+              <Text style={styles.formLabel}>Dimensions *</Text>
+              <TextInput
+                style={styles.formInput}
+                value={board.dimensions}
+                onChangeText={(text) => setBoard(prev => ({ ...prev, dimensions: text }))}
+                placeholder="8'0 x 22 x 3 inches"
+                placeholderTextColor="#999"
+              />
+            </View>
+
+            {/* Pickup Spot */}
+            <View style={styles.formGroup}>
+              <Text style={styles.formLabel}>Pickup Location *</Text>
+              <TextInput
+                style={styles.formInput}
+                value={board.pickupSpot}
+                onChangeText={(text) => setBoard(prev => ({ ...prev, pickupSpot: text }))}
+                placeholder="123 Beach St, San Diego, CA"
+                placeholderTextColor="#999"
+              />
+            </View>
+
+            {/* Image Upload */}
+            <View style={styles.formGroup}>
+              <Text style={styles.formLabel}>Board Photo *</Text>
+              <Pressable
+                style={styles.imageUploadButton}
+                onPress={async () => {
+                  const result = await ImagePicker.launchImageLibraryAsync({
+                    mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                    allowsEditing: true,
+                    aspect: [3, 4],
+                    quality: 0.8,
+                  });
+                  if (!result.canceled) {
+                    setBoard(prev => ({
+                      ...prev,
+                      images: { ...prev.images, deckFront: result.assets[0].uri }
+                    }));
+                  }
+                }}
+              >
+                {board.images.deckFront ? (
+                  <Image source={{ uri: board.images.deckFront }} style={styles.uploadedImage} />
+                ) : (
+                  <View style={styles.uploadPlaceholder}>
+                    <Upload size={32} color="#999" />
+                    <Text style={styles.uploadText}>Tap to upload photo</Text>
+                  </View>
+                )}
+              </Pressable>
+            </View>
+
+            {/* Submit Button */}
+            <Pressable
+              style={[styles.submitBoardButton, isSubmitting && styles.submitBoardButtonDisabled]}
+              onPress={async () => {
+                if (!selectedOwner) {
+                  Alert.alert('Missing Owner', 'Please select a pro user as the board owner.');
+                  return;
+                }
+                if (!board.name || !board.pricePerDay || !board.pricePerWeek || !board.dimensions || !board.pickupSpot) {
+                  Alert.alert('Missing Fields', 'Please fill in all required fields.');
+                  return;
+                }
+                if (!board.images.deckFront) {
+                  Alert.alert('Missing Photo', 'Please upload a board photo.');
+                  return;
+                }
+
+                setIsSubmitting(true);
+                try {
+                  const today = new Date();
+                  const nextYear = new Date();
+                  nextYear.setFullYear(today.getFullYear() + 1);
+
+                  await addBoardMutation.mutateAsync({
+                    name: board.name,
+                    type: board.type,
+                    location: board.location,
+                    pricePerDay: parseFloat(board.pricePerDay),
+                    pricePerWeek: parseFloat(board.pricePerWeek),
+                    dimensions: board.dimensions,
+                    volume: board.volume ? parseFloat(board.volume) : undefined,
+                    description: board.description || `${board.type} surfboard`,
+                    pickupSpot: board.pickupSpot,
+                    availableStart: today.toISOString(),
+                    availableEnd: nextYear.toISOString(),
+                    deliveryAvailable: board.deliveryAvailable,
+                    deliveryPrice: board.deliveryPrice ? parseFloat(board.deliveryPrice) : 0,
+                    imageUrl: board.images.deckFront,
+                    ownerId: selectedOwner,
+                  });
+
+                  Alert.alert('Success!', 'Board added successfully');
+                  setBoard({
+                    name: '',
+                    type: 'shortboard',
+                    location: 'San Diego',
+                    pricePerDay: '35',
+                    pricePerWeek: '175',
+                    dimensions: '',
+                    volume: '',
+                    description: '',
+                    pickupSpot: '',
+                    availableStart: '',
+                    availableEnd: '',
+                    deliveryAvailable: false,
+                    deliveryPrice: '',
+                    images: { deckFront: null, bottomBack: null, dimensions: null },
+                  });
+                  setSelectedOwner('');
+                  setActiveProTab('dashboard');
+                } catch (error: any) {
+                  Alert.alert('Error', error.message || 'Failed to add board');
+                } finally {
+                  setIsSubmitting(false);
+                }
+              }}
+              disabled={isSubmitting}
+            >
+              <Text style={styles.submitBoardButtonText}>
+                {isSubmitting ? 'Adding Board...' : 'Add Board for Rent'}
+              </Text>
+            </Pressable>
+          </ScrollView>
         );
         
       case 'my-boards':
@@ -410,7 +671,7 @@ export default function ProfileScreen() {
           <View style={styles.detailItem}>
             <Calendar size={20} color={Colors.light.tabIconDefault} />
             <Text style={styles.detailText}>
-              Joined {formatDate(currentUser.joinedDate)}
+              Joined {formatDate(currentUser.joinedDate || new Date().toISOString())}
             </Text>
           </View>
 
@@ -1272,5 +1533,116 @@ const styles = StyleSheet.create({
   bookingDate: {
     fontSize: 12,
     color: Colors.light.tabIconDefault,
+  },
+  addBoardForm: {
+    flex: 1,
+  },
+  formGroup: {
+    marginBottom: 16,
+  },
+  formGroupHalf: {
+    flex: 1,
+  },
+  formRow: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 16,
+  },
+  formLabel: {
+    fontSize: 14,
+    fontWeight: '600' as const,
+    color: Colors.light.text,
+    marginBottom: 8,
+  },
+  formInput: {
+    backgroundColor: '#f8f9fa',
+    borderRadius: 8,
+    padding: 12,
+    fontSize: 16,
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+    color: Colors.light.text,
+  },
+  dropdown: {
+    backgroundColor: '#f8f9fa',
+    borderRadius: 8,
+    padding: 12,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+  },
+  dropdownText: {
+    fontSize: 16,
+    color: Colors.light.text,
+  },
+  dropdownMenu: {
+    backgroundColor: 'white',
+    borderRadius: 8,
+    marginTop: 8,
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+    maxHeight: 200,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  dropdownScroll: {
+    maxHeight: 200,
+  },
+  dropdownItem: {
+    padding: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+  },
+  dropdownItemText: {
+    fontSize: 16,
+    color: Colors.light.text,
+  },
+  dropdownItemSubtext: {
+    fontSize: 12,
+    color: Colors.light.tabIconDefault,
+    marginTop: 2,
+  },
+  imageUploadButton: {
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: '#e0e0e0',
+    borderStyle: 'dashed' as const,
+    overflow: 'hidden',
+  },
+  uploadPlaceholder: {
+    padding: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  uploadText: {
+    marginTop: 8,
+    fontSize: 14,
+    color: '#999',
+  },
+  uploadedImage: {
+    width: '100%',
+    height: 200,
+    resizeMode: 'cover',
+  },
+  submitBoardButton: {
+    backgroundColor: Colors.light.tint,
+    borderRadius: 12,
+    padding: 16,
+    alignItems: 'center',
+    marginTop: 8,
+    marginBottom: 24,
+  },
+  submitBoardButtonDisabled: {
+    opacity: 0.6,
+  },
+  submitBoardButtonText: {
+    fontSize: 16,
+    fontWeight: '600' as const,
+    color: 'white',
   },
 });
