@@ -47,6 +47,7 @@ import { useBookings } from '@/src/context/bookings';
 import { useBoardsBackend } from '@/src/context/boards-backend';
 import { router } from 'expo-router';
 import { createBoardDirectly } from '@/lib/queries';
+import { trpc } from '@/lib/trpc';
 
 interface BoardImages {
   deckFront: string | null;
@@ -69,6 +70,7 @@ interface NewBoard {
   deliveryAvailable: boolean;
   deliveryPrice: string;
   images: BoardImages;
+  ownerId: string;
 }
 
 const BOARD_TYPES: { label: string; value: BoardType }[] = [
@@ -84,51 +86,93 @@ const LOCATIONS = [
   'Hossegor', 'Ericeira', 'Taghazout', 'Chiba', 'Lisbon', 'Puerto Escondido'
 ];
 
+// AI-generated realistic board names
+const boardNames = [
+  'Channel Islands Rocket 9',
+  'Lost Puddle Jumper',
+  'Firewire Seaside',
+  'JS Monsta Box',
+  'Hayden Shapes Hypto Krypto',
+  'Pyzel Ghost',
+  'CI Mid',
+  'Lost RNF',
+  'Firewire Mashup',
+  'DHD Black Diamond',
+];
+
+const descriptions = [
+  'Perfect all-around board for intermediate surfers. Great condition with minimal dings. Ideal for 2-6ft waves.',
+  'High-performance shortboard for experienced riders. Fast and responsive with excellent wave catching ability.',
+  'Beginner-friendly soft top with great stability. Perfect for learning and progressing your surfing skills.',
+  'Classic longboard with smooth glide. Excellent for nose riding and small to medium waves.',
+  'Versatile fish design perfect for everyday surfing. Works great in mushy conditions and small waves.',
+];
+
 export default function ProUserScreen() {
   const { addBoard, updateBoard, boards, removeBoard } = useBoards();
   const { refetchBoards } = useBoardsBackend();
   const { bookings, isLoading: bookingsLoading, getTotalRevenue, getBookingsCount, getBookingsByStatus, updateBookingStatus } = useBookings();
+  
+  // Fetch pro users for owner selection
+  const { data: proUsers = [], isLoading: proUsersLoading } = trpc.admin.getProUsers.useQuery();
+  
   const [activeTab, setActiveTab] = useState<'dashboard' | 'add-board' | 'bookings' | 'my-boards'>('dashboard');
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | Booking['status']>('all');
   const [selectedBoards, setSelectedBoards] = useState<string[]>([]);
   const [editingBoard, setEditingBoard] = useState<Board | null>(null);
-  const [board, setBoard] = useState<NewBoard>({
-    name: '',
-    type: 'shortboard',
-    location: 'San Diego',
-    pricePerDay: '35',
-    pricePerWeek: '175',
-    dimensions: '',
-    volume: '',
-    description: '',
-    pickupSpot: '',
-    availableStart: '',
-    availableEnd: '',
-    deliveryAvailable: false,
-    deliveryPrice: '',
-    images: {
-      deckFront: null,
-      bottomBack: null,
-      dimensions: null,
-    },
-  });
-
-  // Set default dates on component mount
-  useEffect(() => {
-    const today = new Date();
-    const threeYearsFromNow = new Date();
-    threeYearsFromNow.setFullYear(today.getFullYear() + 3);
+  
+  // Generate random AI-prefilled values
+  const generateRandomBoardData = () => {
+    const randomName = boardNames[Math.floor(Math.random() * boardNames.length)];
+    const randomDescription = descriptions[Math.floor(Math.random() * descriptions.length)];
+    const randomType = BOARD_TYPES[Math.floor(Math.random() * BOARD_TYPES.length)].value;
+    const randomLocation = LOCATIONS[Math.floor(Math.random() * LOCATIONS.length)];
+    const randomPrice = (25 + Math.floor(Math.random() * 30)).toString();
+    const randomLength = (5 + Math.floor(Math.random() * 4));
+    const randomWidth = (18 + Math.random() * 4).toFixed(1);
+    const randomThickness = (2 + Math.random() * 1.5).toFixed(1);
+    const randomVolume = (25 + Math.floor(Math.random() * 25)).toString();
+    const firstProUser = proUsers.length > 0 ? proUsers[0].id : '';
     
-    setBoard(prev => ({
-      ...prev,
-      availableStart: today.toISOString().split('T')[0],
-      availableEnd: threeYearsFromNow.toISOString().split('T')[0],
-    }));
-  }, []);
+    return {
+      name: randomName,
+      type: randomType,
+      location: randomLocation,
+      pricePerDay: randomPrice,
+      pricePerWeek: (parseInt(randomPrice) * 5).toString(),
+      dimensions: `${randomLength}'${Math.floor(Math.random() * 12)}" x ${randomWidth} x ${randomThickness}`,
+      volume: randomVolume,
+      description: randomDescription,
+      pickupSpot: `${randomLocation} Beach Parking`,
+      availableStart: new Date().toISOString().split('T')[0],
+      availableEnd: new Date(Date.now() + 3 * 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+      deliveryAvailable: Math.random() > 0.5,
+      deliveryPrice: '15',
+      images: {
+        deckFront: 'https://images.unsplash.com/photo-1502933691298-84fc14542831?w=400',
+        bottomBack: null,
+        dimensions: null,
+      },
+      ownerId: firstProUser,
+    };
+  };
+  
+  const [board, setBoard] = useState<NewBoard>(generateRandomBoardData());
+
+  // Update board data when pro users load
+  useEffect(() => {
+    if (proUsers.length > 0 && !board.ownerId) {
+      setBoard(prev => ({
+        ...prev,
+        ownerId: proUsers[0].id,
+      }));
+    }
+  }, [proUsers]);
 
   const [showTypeDropdown, setShowTypeDropdown] = useState(false);
   const [showLocationDropdown, setShowLocationDropdown] = useState(false);
+  const [showOwnerDropdown, setShowOwnerDropdown] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isAnalyzingDimensions, setIsAnalyzingDimensions] = useState(false);
   const [showInfoBubble, setShowInfoBubble] = useState(false);
@@ -456,14 +500,16 @@ export default function ProUserScreen() {
       pricePerDay: board.pricePerDay,
       dimensions: board.dimensions,
       hasDeckFront: !!board.images.deckFront,
+      ownerId: board.ownerId,
     });
 
-    if (!board.name || !board.pricePerDay || !board.dimensions || !board.images.deckFront) {
+    if (!board.name || !board.pricePerDay || !board.dimensions || !board.images.deckFront || !board.ownerId) {
       const missing = [];
       if (!board.name) missing.push('Board Name');
       if (!board.pricePerDay) missing.push('Price per Day');
       if (!board.dimensions) missing.push('Dimensions');
       if (!board.images.deckFront) missing.push('Deck Photo');
+      if (!board.ownerId) missing.push('Owner');
       
       Alert.alert(
         'Missing Information', 
@@ -514,7 +560,7 @@ export default function ProUserScreen() {
           delivery_price: board.deliveryPrice ? parseFloat(board.deliveryPrice) : null,
           availability_start: board.availableStart,
           availability_end: board.availableEnd,
-        });
+        }, board.ownerId);
         
         console.log('✅ Board created in Supabase with ID:', supabaseBoard.id);
         console.log('✅ Full board data:', supabaseBoard);
@@ -545,30 +591,7 @@ export default function ProUserScreen() {
   };
 
   const resetForm = () => {
-    const today = new Date();
-    const threeYearsFromNow = new Date();
-    threeYearsFromNow.setFullYear(today.getFullYear() + 3);
-    
-    setBoard({
-      name: '',
-      type: 'shortboard',
-      location: 'San Diego',
-      pricePerDay: '35',
-      pricePerWeek: '175',
-      dimensions: '',
-      volume: '',
-      description: '',
-      pickupSpot: '',
-      availableStart: today.toISOString().split('T')[0],
-      availableEnd: threeYearsFromNow.toISOString().split('T')[0],
-      deliveryAvailable: false,
-      deliveryPrice: '',
-      images: {
-        deckFront: null,
-        bottomBack: null,
-        dimensions: null,
-      },
-    });
+    setBoard(generateRandomBoardData());
     setEditingBoard(null);
   };
 
@@ -1016,6 +1039,7 @@ export default function ProUserScreen() {
         bottomBack: null,
         dimensions: null,
       },
+      ownerId: board.owner?.id || (proUsers.length > 0 ? proUsers[0].id : ''),
     });
     setActiveTab('add-board');
   };
@@ -1179,11 +1203,10 @@ export default function ProUserScreen() {
 
       {/* Images Section */}
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Board Photos *</Text>
+        <Text style={styles.sectionTitle}>Board Photo *</Text>
+        <Text style={styles.sectionDescription}>Only one photo is required. Additional photos are optional.</Text>
         
-        {renderImageSection('deckFront', 'Deck/Front Photo', 'Show the top side of your board')}
-        {renderImageSection('bottomBack', 'Bottom/Back Photo', 'Show the bottom side of your board')}
-        {renderImageSection('dimensions', 'Dimensions Photo', 'Photo of written dimensions (AI will read automatically)')}
+        {renderImageSection('deckFront', 'Main Board Photo (Required)', 'Show the board - this photo is required')}
       </View>
 
       {/* Basic Info */}
@@ -1285,6 +1308,43 @@ export default function ProUserScreen() {
               multiline
               numberOfLines={4}
             />
+          </View>
+
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Owner (Pro User) *</Text>
+            {proUsersLoading ? (
+              <View style={styles.dropdown}>
+                <Text style={styles.dropdownText}>Loading pro users...</Text>
+              </View>
+            ) : (
+              <>
+                <TouchableOpacity 
+                  style={styles.dropdown}
+                  onPress={() => setShowOwnerDropdown(!showOwnerDropdown)}
+                >
+                  <Text style={styles.dropdownText}>
+                    {proUsers.find((u: any) => u.id === board.ownerId)?.name || 'Select Owner'}
+                  </Text>
+                </TouchableOpacity>
+                {showOwnerDropdown && (
+                  <View style={styles.dropdownMenu}>
+                    {proUsers.map((user: any) => (
+                      <TouchableOpacity
+                        key={user.id}
+                        style={styles.dropdownItem}
+                        onPress={() => {
+                          setBoard(prev => ({ ...prev, ownerId: user.id }));
+                          setShowOwnerDropdown(false);
+                        }}
+                      >
+                        <Text style={styles.dropdownItemText}>{user.name}</Text>
+                        <Text style={[styles.dropdownItemText, { fontSize: 12, color: '#999' }]}>{user.email}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                )}
+              </>
+            )}
           </View>
         </View>
 
@@ -1564,6 +1624,11 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#1a1a1a',
     marginBottom: 16,
+  },
+  sectionDescription: {
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 12,
   },
   imageSection: {
     marginBottom: 24,

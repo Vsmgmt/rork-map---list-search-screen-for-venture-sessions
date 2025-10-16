@@ -753,30 +753,35 @@ export async function createBoardDirectly(formData: {
   delivery_price?: number | null;
   availability_start?: string | null;
   availability_end?: string | null;
-}) {
-  console.log('🔵 createBoardDirectly called with:', formData);
+}, ownerId?: string) {
+  console.log('🔵 createBoardDirectly called with:', formData, 'ownerId:', ownerId);
   
-  const { data: proUsers, error: proUsersError } = await supabase
-    .from('pro_users')
-    .select('id')
-    .order('created_at', { ascending: true })
-    .limit(1);
+  let assignedOwnerId = ownerId;
   
-  if (proUsersError) {
-    console.error('❌ Failed to fetch pro users:', proUsersError);
-    throw new Error('Failed to fetch pro users: ' + proUsersError.message);
+  if (!assignedOwnerId) {
+    const { data: proUsers, error: proUsersError } = await supabase
+      .from('pro_users')
+      .select('id')
+      .order('created_at', { ascending: true })
+      .limit(1);
+    
+    if (proUsersError) {
+      console.error('❌ Failed to fetch pro users:', proUsersError);
+      throw new Error('Failed to fetch pro users: ' + proUsersError.message);
+    }
+    
+    if (!proUsers || proUsers.length === 0) {
+      console.error('❌ No pro users found in database');
+      throw new Error('No pro users available. Please create pro users first.');
+    }
+    
+    assignedOwnerId = proUsers[0].id;
   }
   
-  if (!proUsers || proUsers.length === 0) {
-    console.error('❌ No pro users found in database');
-    throw new Error('No pro users available. Please create pro users first.');
-  }
-  
-  const firstProUser = proUsers[0];
-  console.log('✅ Assigned to first pro user:', firstProUser.id);
+  console.log('✅ Assigned to owner:', assignedOwnerId);
   
   const payload = {
-    owner_id: firstProUser.id,
+    owner_id: assignedOwnerId,
     short_name: formData.short_name,
     dimensions_detail: formData.dimensions_detail ?? null,
     volume_l: formData.volume_l ?? null,
