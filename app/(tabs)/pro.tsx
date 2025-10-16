@@ -491,6 +491,13 @@ export default function ProUserScreen() {
         setEditingBoard(null);
       } else {
         console.log('🚀 Starting board submission to Supabase...');
+        console.log('📋 Board data:', {
+          name: board.name,
+          type: board.type,
+          location: board.location,
+          pricePerDay: board.pricePerDay,
+          pricePerWeek: board.pricePerWeek,
+        });
         
         const supabaseBoard = await createBoardDirectly({
           short_name: board.name,
@@ -509,10 +516,13 @@ export default function ProUserScreen() {
           availability_end: board.availableEnd,
         });
         
-        console.log('✅ Board created in Supabase:', supabaseBoard);
+        console.log('✅ Board created in Supabase with ID:', supabaseBoard.id);
+        console.log('✅ Full board data:', supabaseBoard);
         
         // Refetch boards to show the new board from Supabase
-        await refetchBoards();
+        console.log('🔄 Refetching boards from Supabase...');
+        const refetchResult = await refetchBoards();
+        console.log('✅ Boards refetched. New count:', refetchResult?.data?.length || 'unknown');
         
         router.push({
           pathname: '/confirmation',
@@ -520,7 +530,7 @@ export default function ProUserScreen() {
             type: 'board_added',
             boardId: supabaseBoard.id,
             boardName: board.name,
-            message: 'Your board has been successfully added to Supabase and is now available for rent!'
+            message: `Board saved to Supabase! ID: ${supabaseBoard.id}. Go to Search tab to see it.`
           }
         });
       }
