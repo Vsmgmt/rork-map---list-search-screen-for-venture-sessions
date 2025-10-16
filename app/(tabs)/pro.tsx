@@ -1512,7 +1512,15 @@ export default function ProUserScreen() {
         {/* Submit Button */}
         <TouchableOpacity 
           style={[styles.submitButton, isSubmitting && styles.submitButtonDisabled]}
-          onPress={handleSubmit}
+          onPress={() => {
+            console.log('🔵🔵🔵 BUTTON PRESSED!');
+            console.log('📋 Current state:', {
+              name: board.name,
+              ownerId: board.ownerId,
+              isSubmitting,
+            });
+            handleSubmit();
+          }}
           disabled={isSubmitting}
         >
           <Text style={styles.submitButtonText}>
