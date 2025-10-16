@@ -50,7 +50,22 @@ class SupabaseDatabase {
     maxPrice?: number;
     search?: string;
   }): Promise<Board[]> {
-    let query = supabase.from('boards').select('*');
+    let query = supabase
+      .from('boards')
+      .select(`
+        *,
+        owner:pro_users!owner_id (
+          id,
+          name,
+          email,
+          location,
+          avatar_url,
+          is_verified,
+          rating,
+          boards_count,
+          joined_date
+        )
+      `);
 
     // Apply filters
     if (filters) {
@@ -74,17 +89,26 @@ class SupabaseDatabase {
     const { data, error } = await query;
     if (error) throw error;
     
-    // Map database fields to application fields and construct owner object
+    // Map database fields to application fields with proper owner object
     return (data || []).map(board => ({
       ...board,
       type: board.board_type,
       imageUrl: board.image_url || (board.images && board.images[0]) || '',
-      owner: board.owner_id ? {
-        id: board.owner_id,
-        name: board.owner_name || 'Unknown',
-        avatarUrl: board.owner_avatar || '',
-        avatar_url: board.owner_avatar || '',
-        rating: board.owner_rating || 0,
+      image_url: board.image_url || (board.images && board.images[0]) || '',
+      owner: board.owner ? {
+        id: board.owner.id,
+        name: board.owner.name,
+        email: board.owner.email,
+        location: board.owner.location,
+        avatarUrl: board.owner.avatar_url || '',
+        avatar_url: board.owner.avatar_url || '',
+        rating: board.owner.rating || 0,
+        verified: board.owner.is_verified || false,
+        is_verified: board.owner.is_verified || false,
+        joinedDate: board.owner.joined_date,
+        joined_date: board.owner.joined_date,
+        totalBoards: board.owner.boards_count || 0,
+        total_boards: board.owner.boards_count || 0,
       } : undefined,
     }));
   }
@@ -92,24 +116,46 @@ class SupabaseDatabase {
   async getBoardById(id: string): Promise<Board | undefined> {
     const { data, error } = await supabase
       .from('boards')
-      .select('*')
+      .select(`
+        *,
+        owner:pro_users!owner_id (
+          id,
+          name,
+          email,
+          location,
+          avatar_url,
+          is_verified,
+          rating,
+          boards_count,
+          joined_date
+        )
+      `)
       .eq('id', id)
       .single();
     
     if (error && error.code !== 'PGRST116') throw error;
     if (!data) return undefined;
     
-    // Map database fields to application fields and construct owner object
+    // Map database fields to application fields with proper owner object
     return {
       ...data,
       type: data.board_type,
       imageUrl: data.image_url || (data.images && data.images[0]) || '',
-      owner: data.owner_id ? {
-        id: data.owner_id,
-        name: data.owner_name || 'Unknown',
-        avatarUrl: data.owner_avatar || '',
-        avatar_url: data.owner_avatar || '',
-        rating: data.owner_rating || 0,
+      image_url: data.image_url || (data.images && data.images[0]) || '',
+      owner: data.owner ? {
+        id: data.owner.id,
+        name: data.owner.name,
+        email: data.owner.email,
+        location: data.owner.location,
+        avatarUrl: data.owner.avatar_url || '',
+        avatar_url: data.owner.avatar_url || '',
+        rating: data.owner.rating || 0,
+        verified: data.owner.is_verified || false,
+        is_verified: data.owner.is_verified || false,
+        joinedDate: data.owner.joined_date,
+        joined_date: data.owner.joined_date,
+        totalBoards: data.owner.boards_count || 0,
+        total_boards: data.owner.boards_count || 0,
       } : undefined,
     };
   }
