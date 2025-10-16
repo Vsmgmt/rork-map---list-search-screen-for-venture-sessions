@@ -76,22 +76,33 @@ export const regenerateSeedDataRoute = publicProcedure
 
 export const getAllUsersRoute = publicProcedure
   .query(async () => {
-    console.log('Getting all users from database...');
+    console.log('🔍 getAllUsersRoute: Getting all users from database...');
     
     try {
+      console.log('📋 Fetching pro users...');
       const proUsers = await db.getProUsers();
-      const regularUsers = await db.getAllRegularUsers();
+      console.log(`✅ Found ${proUsers.length} pro users`);
+      if (proUsers.length > 0) {
+        console.log('Sample pro user:', proUsers[0]);
+      }
       
-      console.log(`Found ${proUsers.length} pro users and ${regularUsers.length} regular users in database`);
+      console.log('📋 Fetching regular users...');
+      const regularUsers = await db.getAllRegularUsers();
+      console.log(`✅ Found ${regularUsers.length} regular users`);
+      if (regularUsers.length > 0) {
+        console.log('Sample regular user:', regularUsers[0]);
+      }
       
       const allUsers = [
         ...proUsers.map((u: any) => ({ ...u, type: 'pro' })),
         ...regularUsers.map((u: any) => ({ ...u, type: 'regular' }))
       ];
       
+      console.log(`✅ Returning ${allUsers.length} total users to client`);
       return allUsers;
     } catch (error) {
-      console.error('Error getting users:', error);
+      console.error('❌ Error getting users:', error);
+      console.error('Error stack:', error instanceof Error ? error.stack : 'No stack');
       return [];
     }
   });

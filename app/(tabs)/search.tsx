@@ -98,12 +98,21 @@ export default function SearchScreen() {
 
   // Update users when data loads
   useEffect(() => {
+    console.log('Search: allUsers changed:', { 
+      hasData: !!allUsers, 
+      length: allUsers?.length,
+      isLoading: loadingUsers,
+      sample: allUsers?.[0]
+    });
+    
     if (allUsers && allUsers.length > 0) {
       console.log('Search: Loaded users from backend:', allUsers.length);
       setUsers(allUsers);
       setFilteredUsers(allUsers);
+    } else if (allUsers) {
+      console.log('Search: allUsers is empty array');
     }
-  }, [allUsers]);
+  }, [allUsers, loadingUsers]);
 
   // Live search (client-side) for users
   const performUserSearch = useCallback(() => {
@@ -565,7 +574,11 @@ export default function SearchScreen() {
         ) : (
           filteredUsers.length === 0 ? (
             <View style={styles.emptyState}>
-              <Text style={styles.emptyStateText}>No users match your filters.</Text>
+              <Text style={styles.emptyStateText}>No users found.</Text>
+              <Text style={styles.emptyStateSubtext}>
+                Total users loaded: {users.length}
+              </Text>
+              {loadingUsers && <Text style={styles.emptyStateSubtext}>Loading...</Text>}
             </View>
           ) : (
             <FlatList
@@ -746,7 +759,8 @@ const styles = StyleSheet.create({
   addButtonTextInCart: { color: 'white' },
 
   emptyState: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 32 },
-  emptyStateText: { fontSize: 16, color: '#666', textAlign: 'center' },
+  emptyStateText: { fontSize: 16, color: '#666', textAlign: 'center', marginBottom: 8 },
+  emptyStateSubtext: { fontSize: 14, color: '#999', textAlign: 'center', marginTop: 4 },
 
   infoBubble: {
     backgroundColor: 'white',
