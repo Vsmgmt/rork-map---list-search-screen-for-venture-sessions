@@ -160,12 +160,12 @@ export default function ProUserScreen() {
   
   const [board, setBoard] = useState<NewBoard>(generateRandomBoardData());
 
-  // Update board data when pro users load
+  // Update board data when pro users load - make sure it's always set
   useEffect(() => {
-    if (proUsers.length > 0 && !board.ownerId) {
+    if (proUsers.length > 0) {
       setBoard(prev => ({
         ...prev,
-        ownerId: proUsers[0].id,
+        ownerId: prev.ownerId || proUsers[0].id,
       }));
     }
   }, [proUsers]);
@@ -290,9 +290,10 @@ export default function ProUserScreen() {
           const descriptionMatch = completion.match(/DESCRIPTION:\s*([\s\S]+?)(?=\n\n|$)/i);
           
           let fieldsUpdated = 0;
+          const updates: any = {};
           
-          if (nameMatch && nameMatch[1].trim() !== 'NOT_VISIBLE' && !board.name) {
-            setBoard(prev => ({ ...prev, name: nameMatch[1].trim() }));
+          if (nameMatch && nameMatch[1].trim() !== 'NOT_VISIBLE') {
+            updates.name = nameMatch[1].trim();
             fieldsUpdated++;
           }
           
@@ -302,25 +303,30 @@ export default function ProUserScreen() {
             const matchedType = boardTypes.find(t => 
               typeValue.includes(t) || typeValue.includes(t.replace('-', ''))
             );
-            if (matchedType && !board.type) {
-              setBoard(prev => ({ ...prev, type: matchedType as BoardType }));
+            if (matchedType) {
+              updates.type = matchedType as BoardType;
               fieldsUpdated++;
             }
           }
           
-          if (dimensionsMatch && dimensionsMatch[1].trim() !== 'NOT_VISIBLE' && !board.dimensions) {
-            setBoard(prev => ({ ...prev, dimensions: dimensionsMatch[1].trim() }));
+          if (dimensionsMatch && dimensionsMatch[1].trim() !== 'NOT_VISIBLE') {
+            updates.dimensions = dimensionsMatch[1].trim();
             fieldsUpdated++;
           }
           
-          if (volumeMatch && !board.volume) {
-            setBoard(prev => ({ ...prev, volume: volumeMatch[1] }));
+          if (volumeMatch) {
+            updates.volume = volumeMatch[1];
             fieldsUpdated++;
           }
           
-          if (descriptionMatch && descriptionMatch[1].trim() !== 'NOT_VISIBLE' && !board.description) {
-            setBoard(prev => ({ ...prev, description: descriptionMatch[1].trim() }));
+          if (descriptionMatch && descriptionMatch[1].trim() !== 'NOT_VISIBLE') {
+            updates.description = descriptionMatch[1].trim();
             fieldsUpdated++;
+          }
+          
+          // Apply all updates at once
+          if (Object.keys(updates).length > 0) {
+            setBoard(prev => ({ ...prev, ...updates }));
           }
           
           if (fieldsUpdated > 0) {
@@ -1203,10 +1209,10 @@ export default function ProUserScreen() {
 
       {/* Images Section */}
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Board Photo *</Text>
-        <Text style={styles.sectionDescription}>Only one photo is required. Additional photos are optional.</Text>
+        <Text style={styles.sectionTitle}>📸 Board Photo *</Text>
+        <Text style={styles.sectionDescription}>Upload one photo and AI will auto-fill all fields below! Just review and click "Add Board".</Text>
         
-        {renderImageSection('deckFront', 'Main Board Photo (Required)', 'Show the board - this photo is required')}
+        {renderImageSection('deckFront', 'Main Board Photo (Required)', '🤖 AI will auto-fill name, type, dimensions, volume & description from this photo')}
       </View>
 
       {/* Basic Info */}
@@ -1311,34 +1317,44 @@ export default function ProUserScreen() {
           </View>
 
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Owner (Pro User) *</Text>
+            <Text style={styles.label}>👤 Owner (Pro User) * {board.ownerId && '✓'}</Text>
             {proUsersLoading ? (
               <View style={styles.dropdown}>
                 <Text style={styles.dropdownText}>Loading pro users...</Text>
               </View>
+            ) : proUsers.length === 0 ? (
+              <View style={styles.dropdown}>
+                <Text style={styles.dropdownText}>No pro users found</Text>
+              </View>
             ) : (
               <>
                 <TouchableOpacity 
-                  style={styles.dropdown}
+                  style={[styles.dropdown, board.ownerId && styles.dropdownFilled]}
                   onPress={() => setShowOwnerDropdown(!showOwnerDropdown)}
                 >
-                  <Text style={styles.dropdownText}>
+                  <Text style={[styles.dropdownText, board.ownerId && styles.dropdownTextFilled]}>
                     {proUsers.find((u: any) => u.id === board.ownerId)?.name || 'Select Owner'}
                   </Text>
+                  <Users size={20} color={board.ownerId ? Colors.light.tint : '#666'} />
                 </TouchableOpacity>
                 {showOwnerDropdown && (
                   <View style={styles.dropdownMenu}>
                     {proUsers.map((user: any) => (
                       <TouchableOpacity
                         key={user.id}
-                        style={styles.dropdownItem}
+                        style={[styles.dropdownItem, board.ownerId === user.id && styles.dropdownItemSelected]}
                         onPress={() => {
                           setBoard(prev => ({ ...prev, ownerId: user.id }));
                           setShowOwnerDropdown(false);
                         }}
                       >
-                        <Text style={styles.dropdownItemText}>{user.name}</Text>
-                        <Text style={[styles.dropdownItemText, { fontSize: 12, color: '#999' }]}>{user.email}</Text>
+                        <View>
+                          <Text style={styles.dropdownItemText}>{user.name}</Text>
+                          <Text style={[styles.dropdownItemText, { fontSize: 12, color: '#999' }]}>{user.email}</Text>
+                        </View>
+                        {board.ownerId === user.id && (
+                          <Check size={16} color={Colors.light.tint} />
+                        )}
                       </TouchableOpacity>
                     ))}
                   </View>
@@ -1735,6 +1751,14 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#1a1a1a',
   },
+  dropdownFilled: {
+    borderColor: Colors.light.tint,
+    backgroundColor: '#f0f8ff',
+  },
+  dropdownTextFilled: {
+    color: Colors.light.tint,
+    fontWeight: '600' as const,
+  },
   dropdownMenu: {
     borderWidth: 1,
     borderColor: '#ddd',
@@ -1744,9 +1768,15 @@ const styles = StyleSheet.create({
     maxHeight: 200,
   },
   dropdownItem: {
+    flexDirection: 'row' as const,
+    justifyContent: 'space-between' as const,
+    alignItems: 'center' as const,
     padding: 12,
     borderBottomWidth: 1,
     borderBottomColor: '#f0f0f0',
+  },
+  dropdownItemSelected: {
+    backgroundColor: '#f0f8ff',
   },
   dropdownItemText: {
     fontSize: 16,
