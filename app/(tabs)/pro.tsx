@@ -1323,8 +1323,20 @@ export default function ProUserScreen() {
                 <Text style={styles.dropdownText}>Loading pro users...</Text>
               </View>
             ) : proUsers.length === 0 ? (
-              <View style={styles.dropdown}>
-                <Text style={styles.dropdownText}>No pro users found</Text>
+              <View style={styles.noProUsersContainer}>
+                <View style={styles.dropdown}>
+                  <Text style={styles.dropdownText}>⚠️ No pro users found</Text>
+                </View>
+                <Text style={styles.noProUsersHint}>
+                  You need to create pro users first before adding boards.
+                </Text>
+                <TouchableOpacity 
+                  style={styles.createProUsersButton}
+                  onPress={() => router.push('/data-management')}
+                >
+                  <Users size={16} color="white" />
+                  <Text style={styles.createProUsersButtonText}>Create Pro Users</Text>
+                </TouchableOpacity>
               </View>
             ) : (
               <>
@@ -2429,5 +2441,30 @@ const styles = StyleSheet.create({
   infoBubbleBold: {
     fontWeight: '600',
     color: '#333',
+  },
+  noProUsersContainer: {
+    marginTop: 12,
+  },
+  noProUsersHint: {
+    fontSize: 13,
+    color: '#666',
+    marginTop: 8,
+    marginBottom: 12,
+    lineHeight: 18,
+  },
+  createProUsersButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: Colors.light.tint,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    gap: 8,
+  },
+  createProUsersButtonText: {
+    color: 'white',
+    fontSize: 14,
+    fontWeight: '600',
   },
 });
