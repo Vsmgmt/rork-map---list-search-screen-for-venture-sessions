@@ -44,6 +44,7 @@ import Colors from '@/constants/colors';
 import DatePicker from '@/components/DatePicker';
 import { useBoards } from '@/src/context/boards';
 import { useBookings } from '@/src/context/bookings';
+import { useBoardsBackend } from '@/src/context/boards-backend';
 import { router } from 'expo-router';
 import { createBoardDirectly } from '@/lib/queries';
 
@@ -85,6 +86,7 @@ const LOCATIONS = [
 
 export default function ProUserScreen() {
   const { addBoard, updateBoard, boards, removeBoard } = useBoards();
+  const { refetchBoards } = useBoardsBackend();
   const { bookings, isLoading: bookingsLoading, getTotalRevenue, getBookingsCount, getBookingsByStatus, updateBookingStatus } = useBookings();
   const [activeTab, setActiveTab] = useState<'dashboard' | 'add-board' | 'bookings' | 'my-boards'>('dashboard');
   const [searchQuery, setSearchQuery] = useState('');
@@ -509,13 +511,14 @@ export default function ProUserScreen() {
         
         console.log('✅ Board created in Supabase:', supabaseBoard);
         
-        const boardId = await addBoard(board);
+        // Refetch boards to show the new board from Supabase
+        await refetchBoards();
         
         router.push({
           pathname: '/confirmation',
           params: {
             type: 'board_added',
-            boardId: boardId,
+            boardId: supabaseBoard.id,
             boardName: board.name,
             message: 'Your board has been successfully added to Supabase and is now available for rent!'
           }
