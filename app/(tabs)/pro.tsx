@@ -448,8 +448,25 @@ export default function ProUserScreen() {
   };
 
   const handleSubmit = async () => {
+    console.log('🔵 handleSubmit called');
+    console.log('📋 Current board data:', {
+      name: board.name,
+      pricePerDay: board.pricePerDay,
+      dimensions: board.dimensions,
+      hasDeckFront: !!board.images.deckFront,
+    });
+
     if (!board.name || !board.pricePerDay || !board.dimensions || !board.images.deckFront) {
-      Alert.alert('Missing Information', 'Please fill in all required fields and add at least a deck photo.');
+      const missing = [];
+      if (!board.name) missing.push('Board Name');
+      if (!board.pricePerDay) missing.push('Price per Day');
+      if (!board.dimensions) missing.push('Dimensions');
+      if (!board.images.deckFront) missing.push('Deck Photo');
+      
+      Alert.alert(
+        'Missing Information', 
+        `Please fill in the following required fields:\n\n${missing.join('\n')}`
+      );
       return;
     }
 
