@@ -259,10 +259,10 @@ export default function MapScreen() {
                 <Truck size={16} color="#007AFF" />
               </View>
             )}
-            {item.owner?.avatarUrl || item.owner?.avatar_url ? (
+            {(item.owner?.avatarUrl || item.owner?.avatar_url) ? (
               <View style={styles.boardOwnerAvatar}>
                 <Image
-                  source={{ uri: item.owner?.avatarUrl || item.owner?.avatar_url }}
+                  source={{ uri: item.owner.avatarUrl || item.owner.avatar_url }}
                   style={styles.boardAvatarImage}
                   resizeMode="cover"
                 />
