@@ -186,14 +186,16 @@ export default function CartScreen() {
                     </View>
                   </View>
                 )}
-                <View style={styles.ownerRow}>
-                  <Image
-                    source={{ uri: item.board.owner.avatarUrl }}
-                    style={styles.ownerAvatar}
-                    resizeMode="cover"
-                  />
-                  <Text style={styles.ownerName}>{item.board.owner.name}</Text>
-                </View>
+                {item.board.owner && (
+                  <View style={styles.ownerRow}>
+                    <Image
+                      source={{ uri: item.board.owner.avatarUrl || item.board.owner.avatar_url || 'https://via.placeholder.com/40' }}
+                      style={styles.ownerAvatar}
+                      resizeMode="cover"
+                    />
+                    <Text style={styles.ownerName}>{item.board.owner.name}</Text>
+                  </View>
+                )}
               </View>
               <Pressable
                 onPress={() => handleRemoveItem(index)}
