@@ -179,16 +179,31 @@ class SupabaseDatabase {
       }
     }
     
-    // Map the Board object to database schema
+    // Map the Board object to database schema with ALL required fields
     const dbBoard = {
       id: newBoard.id,
       short_name: newBoard.short_name,
       location: newBoard.location,
+      location_city: newBoard.location,
+      location_country: '',
       board_type: newBoard.type,
       price_per_day: newBoard.price_per_day,
+      price_per_week: newBoard.price_per_week || (newBoard.price_per_day ? newBoard.price_per_day * 6 : 0),
+      price_per_hour: null,
+      price_sale: null,
+      dimensions_detail: newBoard.dimensions_detail || '',
+      volume_l: newBoard.volume_l || null,
       description: newBoard.dimensions_detail || '',
+      pickup_spot: newBoard.pickup_spot || newBoard.location,
+      lat: newBoard.lat || 0,
+      lon: newBoard.lon || 0,
+      delivery_available: newBoard.delivery_available || false,
+      delivery_price: newBoard.delivery_price || 0,
+      availability_start: newBoard.available_start || new Date().toISOString(),
+      availability_end: newBoard.available_end || new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
       images: [newBoard.imageUrl || ''],
       image_url: newBoard.imageUrl || '',
+      image_path: null,
       owner_id: ownerData?.id || '',
       owner_name: ownerData?.name || '',
       owner_avatar: ownerData?.avatarUrl || ownerData?.avatar_url || '',
