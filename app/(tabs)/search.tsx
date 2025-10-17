@@ -182,14 +182,11 @@ export default function SearchScreen() {
         results = results.filter((b: any) => b.type === selectedBoardType);
       }
 
-      // Sort by price (nulls last)
+      // Sort alphabetically by short_name
       results.sort((a: any, b: any) => {
-        const ap = a?.price_per_day ?? null;
-        const bp = b?.price_per_day ?? null;
-        if (ap == null && bp == null) return 0;
-        if (ap == null) return 1;
-        if (bp == null) return -1;
-        return ap - bp;
+        const aName = a?.short_name ?? '';
+        const bName = b?.short_name ?? '';
+        return aName.localeCompare(bName);
       });
 
       setFiltered(results as Board[]);
