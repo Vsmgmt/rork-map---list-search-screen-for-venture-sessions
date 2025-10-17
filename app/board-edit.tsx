@@ -18,6 +18,7 @@ import { supabase } from '@/lib/supabase';
 import { BoardType } from '@/src/types/board';
 import Colors from '@/constants/colors';
 import * as ImagePicker from 'expo-image-picker';
+import { uploadBoardImage } from '@/lib/upload';
 
 const BOARD_TYPES = [
   { value: 'soft-top' as BoardType, label: 'Soft-top' },
@@ -335,6 +336,35 @@ If any field is not visible or unclear, write "NOT_VISIBLE" for that field.`,
     setSaving(true);
     
     try {
+      let uploadedImageUrl = imageUrl;
+      
+      if (localImageUri && boardId) {
+        console.log('Uploading new image to Supabase Storage...');
+        
+        try {
+          const ext = localImageUri.split('.').pop() || 'jpg';
+          const { publicUrl } = await uploadBoardImage(
+            boardId,
+            { uri: localImageUri },
+            ext
+          );
+          
+          uploadedImageUrl = publicUrl;
+          console.log('Image uploaded successfully:', publicUrl);
+        } catch (uploadError: any) {
+          console.error('Image upload failed:', uploadError);
+          Alert.alert(
+            'Image Upload Failed',
+            'Failed to upload image. Continue saving without new image?',
+            [
+              { text: 'Cancel', style: 'cancel', onPress: () => { setSaving(false); } },
+              { text: 'Continue', onPress: () => {} }
+            ]
+          );
+          return;
+        }
+      }
+      
       const notesData: any = {};
       
       if (lengthIn) notesData.length_in = parseFloat(lengthIn);
@@ -352,6 +382,7 @@ If any field is not visible or unclear, write "NOT_VISIBLE" for that field.`,
         price_sale: salePrice ? parseFloat(salePrice) : null,
         price_per_day: rentPricePerDay ? parseFloat(rentPricePerDay) : null,
         price_per_week: rentPricePerWeek ? parseFloat(rentPricePerWeek) : null,
+        image_url: uploadedImageUrl || null,
         notes: Object.keys(notesData).length > 0 ? JSON.stringify(notesData) : null,
       };
       
