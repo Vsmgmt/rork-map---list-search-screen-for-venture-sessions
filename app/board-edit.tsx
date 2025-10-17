@@ -8,13 +8,15 @@ import {
   TextInput,
   Alert,
   ActivityIndicator,
+  Image,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLocalSearchParams, router } from 'expo-router';
-import { X, Save } from 'lucide-react-native';
+import { X, Save, Sparkles } from 'lucide-react-native';
 import { boardQueries } from '@/lib/queries';
 import { useBoardsBackend } from '@/src/context/boards-backend';
 import { useBoards } from '@/src/context/boards';
+import { generateText } from '@rork/toolkit-sdk';
 import Colors from '@/constants/colors';
 
 export default function BoardEditScreen() {
@@ -34,6 +36,11 @@ export default function BoardEditScreen() {
   const [pricePerWeek, setPricePerWeek] = useState('');
   const [location, setLocation] = useState('');
   const [pickupSpot, setPickupSpot] = useState('');
+  const [boardType, setBoardType] = useState('');
+  const [lengthIn, setLengthIn] = useState('');
+  const [widthIn, setWidthIn] = useState('');
+  const [thicknessIn, setThicknessIn] = useState('');
+  const [aiAnalyzing, setAiAnalyzing] = useState(false);
   
   useEffect(() => {
     if (!boardId) {
@@ -66,6 +73,10 @@ export default function BoardEditScreen() {
           setPricePerWeek((data as any).price_per_week?.toString() || '');
           setLocation((data as any).location || (data as any).location_city || '');
           setPickupSpot((data as any).pickup_spot || '');
+          setBoardType((data as any).board_type || '');
+          setLengthIn((data as any).length_in?.toString() || '');
+          setWidthIn((data as any).width_in?.toString() || '');
+          setThicknessIn((data as any).thickness_in?.toString() || '');
         }
       } catch (error) {
         console.error('Failed to fetch board:', error);
@@ -75,25 +86,92 @@ export default function BoardEditScreen() {
     })();
   }, [boardId, getBackendBoard, getLocalBoard]);
   
-  const handleSave = async () => {
+  const handleAnalyzeImage = async () => {
     if (!board) return;
     
-    if (!shortName.trim()) {
-      Alert.alert('Validation Error', 'Short name is required');
+    const imageUrl = board.image_url || board.imageUrl;
+    if (!imageUrl) {
+      Alert.alert('No Image', 'This board has no image to analyze');
       return;
     }
     
+    setAiAnalyzing(true);
+    try {
+      const prompt = `Analyze this surfboard image and extract the following information in JSON format:
+{
+  "short_name": "descriptive short name (e.g., Blue Longboard, Red Fish)",
+  "board_type": "one of: shortboard, longboard, fish, funboard, sup, soft-top",
+  "dimensions_detail": "estimated dimensions in format like 9'2'' x 23'' x 3''",
+  "length_in": estimated length in inches (number only),
+  "width_in": estimated width in inches (number only),
+  "thickness_in": estimated thickness in inches (number only),
+  "volume_l": estimated volume in liters (number only)
+}
+
+Only return valid JSON. Make reasonable estimates based on the visual appearance.`;
+      
+      const response = await generateText({
+        messages: [
+          {
+            role: 'user',
+            content: [
+              { type: 'text', text: prompt },
+              { type: 'image', image: imageUrl }
+            ]
+          }
+        ]
+      });
+      
+      console.log('AI response:', response);
+      
+      const jsonMatch = response.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) {
+        throw new Error('Could not parse AI response');
+      }
+      
+      const data = JSON.parse(jsonMatch[0]);
+      
+      if (data.short_name) setShortName(data.short_name);
+      if (data.board_type) setBoardType(data.board_type);
+      if (data.dimensions_detail) setDimensions(data.dimensions_detail);
+      if (data.length_in) setLengthIn(data.length_in.toString());
+      if (data.width_in) setWidthIn(data.width_in.toString());
+      if (data.thickness_in) setThicknessIn(data.thickness_in.toString());
+      if (data.volume_l) setVolumeL(data.volume_l.toString());
+      
+      Alert.alert('Success', 'AI analysis completed! Review and adjust the fields as needed.');
+    } catch (error: any) {
+      console.error('AI analysis failed:', error);
+      Alert.alert('Analysis Failed', error.message || 'Could not analyze image');
+    } finally {
+      setAiAnalyzing(false);
+    }
+  };
+
+  const handleSave = async () => {
+    if (!board) return;
+    
     setSaving(true);
     try {
-      const updates = {
-        short_name: shortName.trim(),
-        dimensions_detail: dimensions.trim(),
-        volume_l: volumeL ? parseFloat(volumeL) : null,
-        price_per_day: pricePerDay ? parseFloat(pricePerDay) : null,
-        price_per_week: pricePerWeek ? parseFloat(pricePerWeek) : null,
-        location: location.trim(),
-        pickup_spot: pickupSpot.trim(),
-      };
+      const updates: any = {};
+      
+      if (shortName.trim()) updates.short_name = shortName.trim();
+      if (dimensions.trim()) updates.dimensions_detail = dimensions.trim();
+      if (volumeL) updates.volume_l = parseFloat(volumeL);
+      if (pricePerDay) updates.price_per_day = parseFloat(pricePerDay);
+      if (pricePerWeek) updates.price_per_week = parseFloat(pricePerWeek);
+      if (location.trim()) updates.location = location.trim();
+      if (pickupSpot.trim()) updates.pickup_spot = pickupSpot.trim();
+      if (boardType.trim()) updates.board_type = boardType.trim();
+      if (lengthIn) updates.length_in = parseFloat(lengthIn);
+      if (widthIn) updates.width_in = parseFloat(widthIn);
+      if (thicknessIn) updates.thickness_in = parseFloat(thicknessIn);
+      
+      if (Object.keys(updates).length === 0) {
+        Alert.alert('No Changes', 'No fields were modified');
+        setSaving(false);
+        return;
+      }
       
       console.log('Updating board:', boardId, updates);
       await boardQueries.update(boardId, updates);
@@ -103,7 +181,7 @@ export default function BoardEditScreen() {
       ]);
     } catch (error: any) {
       console.error('Failed to update board:', error);
-      const errorMsg = error?.message || error?.error?.message || JSON.stringify(error) || 'Unknown error';
+      const errorMsg = error?.message || 'Unknown error';
       Alert.alert('Error', `Failed to update board: ${errorMsg}`);
     } finally {
       setSaving(false);
@@ -170,16 +248,50 @@ export default function BoardEditScreen() {
       
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
         <View style={styles.formContainer}>
+          {(board.image_url || board.imageUrl) && (
+            <View style={styles.imageSection}>
+              <Image
+                source={{ uri: board.image_url || board.imageUrl }}
+                style={styles.boardImage}
+                resizeMode="cover"
+              />
+              <Pressable
+                style={[styles.aiButton, aiAnalyzing && styles.aiButtonDisabled]}
+                onPress={handleAnalyzeImage}
+                disabled={aiAnalyzing}
+              >
+                {aiAnalyzing ? (
+                  <ActivityIndicator size="small" color="white" />
+                ) : (
+                  <>
+                    <Sparkles size={20} color="white" />
+                    <Text style={styles.aiButtonText}>Analyze with AI</Text>
+                  </>
+                )}
+              </Pressable>
+            </View>
+          )}
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Basic Information</Text>
             
             <View style={styles.formGroup}>
-              <Text style={styles.label}>Short Name *</Text>
+              <Text style={styles.label}>Short Name</Text>
               <TextInput
                 style={styles.input}
                 value={shortName}
                 onChangeText={setShortName}
                 placeholder="e.g., Blue Cruiser"
+                placeholderTextColor="#999"
+              />
+            </View>
+            
+            <View style={styles.formGroup}>
+              <Text style={styles.label}>Board Type</Text>
+              <TextInput
+                style={styles.input}
+                value={boardType}
+                onChangeText={setBoardType}
+                placeholder="e.g., shortboard, longboard, fish"
                 placeholderTextColor="#999"
               />
             </View>
@@ -198,6 +310,44 @@ export default function BoardEditScreen() {
           
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Specifications</Text>
+            
+            <View style={styles.formRow}>
+              <View style={[styles.formGroup, styles.formGroupThird]}>
+                <Text style={styles.label}>Length (in)</Text>
+                <TextInput
+                  style={styles.input}
+                  value={lengthIn}
+                  onChangeText={setLengthIn}
+                  placeholder="110"
+                  placeholderTextColor="#999"
+                  keyboardType="decimal-pad"
+                />
+              </View>
+              
+              <View style={[styles.formGroup, styles.formGroupThird]}>
+                <Text style={styles.label}>Width (in)</Text>
+                <TextInput
+                  style={styles.input}
+                  value={widthIn}
+                  onChangeText={setWidthIn}
+                  placeholder="23"
+                  placeholderTextColor="#999"
+                  keyboardType="decimal-pad"
+                />
+              </View>
+              
+              <View style={[styles.formGroup, styles.formGroupThird]}>
+                <Text style={styles.label}>Thick (in)</Text>
+                <TextInput
+                  style={styles.input}
+                  value={thicknessIn}
+                  onChangeText={setThicknessIn}
+                  placeholder="3"
+                  placeholderTextColor="#999"
+                  keyboardType="decimal-pad"
+                />
+              </View>
+            </View>
             
             <View style={styles.formGroup}>
               <Text style={styles.label}>Volume (liters)</Text>
@@ -363,9 +513,42 @@ const styles = StyleSheet.create({
   formGroupHalf: {
     flex: 1,
   },
+  formGroupThird: {
+    flex: 1,
+  },
   formRow: {
     flexDirection: 'row',
     gap: 12,
+  },
+  imageSection: {
+    backgroundColor: 'white',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+    alignItems: 'center',
+  },
+  boardImage: {
+    width: '100%',
+    height: 200,
+    borderRadius: 8,
+    marginBottom: 12,
+  },
+  aiButton: {
+    backgroundColor: '#8B5CF6',
+    borderRadius: 20,
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  aiButtonDisabled: {
+    opacity: 0.6,
+  },
+  aiButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: '600',
   },
   label: {
     fontSize: 14,
