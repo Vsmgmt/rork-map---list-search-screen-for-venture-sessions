@@ -50,6 +50,7 @@ export default function BoardEditScreen() {
   const [rentPricePerWeek, setRentPricePerWeek] = useState('');
   const [imageUrl, setImageUrl] = useState('');
   const [localImageUri, setLocalImageUri] = useState('');
+  const [notes, setNotes] = useState('');
   
   useEffect(() => {
     if (!boardId) {
@@ -68,20 +69,27 @@ export default function BoardEditScreen() {
         if (error) throw error;
         
         if (data) {
-          setName(data.name || data.short_name || '');
-          setType(data.type || 'shortboard');
-          setDimensions(data.dimensions || data.dimensions_detail || '');
-          setLengthIn(data.length_in?.toString() || '');
-          setWidthIn(data.width_in?.toString() || '');
-          setThicknessIn(data.thickness_in?.toString() || '');
+          setName(data.short_name || '');
+          setType(data.board_type || 'shortboard');
+          setDimensions(data.dimensions_detail || '');
           setVolumeL(data.volume_l?.toString() || '');
-          setFinSetup(data.fin_setup || '');
-          setCondition(data.condition || '');
           setLocation(data.location || '');
-          setSalePrice(data.sale_price?.toString() || '');
-          setRentPricePerDay(data.rent_price_per_day?.toString() || '');
-          setRentPricePerWeek(data.rent_price_per_week?.toString() || '');
+          setSalePrice(data.price_sale?.toString() || '');
+          setRentPricePerDay(data.price_per_day?.toString() || '');
+          setRentPricePerWeek(data.price_per_week?.toString() || '');
           setImageUrl(data.image_url || '');
+          setNotes(data.notes || '');
+          
+          try {
+            const notesData = data.notes ? JSON.parse(data.notes) : {};
+            setLengthIn(notesData.length_in?.toString() || '');
+            setWidthIn(notesData.width_in?.toString() || '');
+            setThicknessIn(notesData.thickness_in?.toString() || '');
+            setFinSetup(notesData.fin_setup || '');
+            setCondition(notesData.condition || '');
+          } catch (e) {
+            console.log('Notes not in JSON format, skipping parse');
+          }
         }
       } catch (error: any) {
         console.error('Failed to fetch board:', error);
@@ -327,27 +335,28 @@ If any field is not visible or unclear, write "NOT_VISIBLE" for that field.`,
     setSaving(true);
     
     try {
+      const notesData: any = {};
+      
+      if (lengthIn) notesData.length_in = parseFloat(lengthIn);
+      if (widthIn) notesData.width_in = parseFloat(widthIn);
+      if (thicknessIn) notesData.thickness_in = parseFloat(thicknessIn);
+      if (finSetup.trim()) notesData.fin_setup = finSetup.trim();
+      if (condition.trim()) notesData.condition = condition.trim();
+      
       const updateData: any = {
-        name: name.trim(),
         short_name: name.trim(),
-        type,
-        dimensions: dimensions.trim() || null,
+        board_type: type,
         dimensions_detail: dimensions.trim() || null,
-        length_in: lengthIn ? parseFloat(lengthIn) : null,
-        width_in: widthIn ? parseFloat(widthIn) : null,
-        thickness_in: thicknessIn ? parseFloat(thicknessIn) : null,
         volume_l: volumeL ? parseFloat(volumeL) : null,
-        fin_setup: finSetup.trim() || null,
-        condition: condition.trim() || null,
         location: location.trim() || null,
-        sale_price: salePrice ? parseFloat(salePrice) : null,
-        rent_price_per_day: rentPricePerDay ? parseFloat(rentPricePerDay) : null,
-        rent_price_per_week: rentPricePerWeek ? parseFloat(rentPricePerWeek) : null,
+        price_sale: salePrice ? parseFloat(salePrice) : null,
         price_per_day: rentPricePerDay ? parseFloat(rentPricePerDay) : null,
         price_per_week: rentPricePerWeek ? parseFloat(rentPricePerWeek) : null,
+        notes: Object.keys(notesData).length > 0 ? JSON.stringify(notesData) : null,
       };
       
       console.log('Updating board with data:', updateData);
+      console.log('Notes data (fields without columns):', notesData);
       
       const { data, error } = await supabase
         .from('boards')
