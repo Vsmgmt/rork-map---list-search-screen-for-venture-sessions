@@ -20,6 +20,7 @@ import { useCart } from '@/src/context/cart';
 import { useBoardsBackend } from '@/src/context/boards-backend';
 import { Board, BoardType } from '@/src/types/board';
 import { trpc } from '@/lib/trpc';
+import { supabase } from '@/lib/supabase';
 import { SEED_PRO_USERS } from '@/src/data/seed-pro-users';
 
 interface User {
@@ -58,11 +59,9 @@ export default function SearchScreen() {
   const { boards: backendBoards, isLoading: loadingBoards } = useBoardsBackend();
 
   const [searchMode, setSearchMode] = useState<'boards' | 'users'>('boards');
-  const { 
-    data: allUsers, 
-    isLoading: loadingUsers,
-    error: usersError 
-  } = trpc.admin.getAllUsers.useQuery();
+  const [allUsers, setAllUsers] = useState<User[]>([]);
+  const [loadingUsers, setLoadingUsers] = useState(true);
+  const [usersError, setUsersError] = useState<string | null>(null);
 
   const [boards, setBoards] = useState<Board[]>([]);
   const [filtered, setFiltered] = useState<Board[]>([]);
@@ -108,27 +107,52 @@ export default function SearchScreen() {
     }
   }, [backendBoards, loadingBoards]);
 
-  // Update users when data loads (with fallback to seed data)
+  // Fetch users directly from Supabase
   useEffect(() => {
-    console.log('Search: allUsers changed:', { 
-      hasData: !!allUsers, 
-      length: allUsers?.length,
-      isLoading: loadingUsers,
-      hasError: !!usersError,
-      sample: allUsers?.[0]
-    });
-    
-    const userList = allUsers && allUsers.length > 0 ? allUsers : SEED_PRO_USERS;
-    
-    if (allUsers && allUsers.length > 0) {
-      console.log('✅ Search: Loaded users from Supabase:', allUsers.length);
-    } else {
-      console.log('⚠️ Search: Using local seed users:', SEED_PRO_USERS.length);
-    }
-    
-    setUsers(userList);
-    setFilteredUsers(userList);
-  }, [allUsers, loadingUsers, usersError]);
+    const fetchUsers = async () => {
+      try {
+        setLoadingUsers(true);
+        console.log('🔄 Fetching users from Supabase...');
+        
+        const { data, error } = await supabase
+          .from('pro_users')
+          .select('*')
+          .order('name', { ascending: true });
+
+        if (error) {
+          console.error('❌ Supabase user fetch error:', error);
+          throw error;
+        }
+
+        console.log('✅ Fetched users from Supabase:', data?.length || 0);
+        
+        const userList = data && data.length > 0 ? data : SEED_PRO_USERS;
+        
+        if (data && data.length > 0) {
+          setAllUsers(data);
+          setUsers(data);
+          setFilteredUsers(data);
+        } else {
+          console.log('⚠️ No users in Supabase, using local seed users:', SEED_PRO_USERS.length);
+          setAllUsers(SEED_PRO_USERS);
+          setUsers(SEED_PRO_USERS);
+          setFilteredUsers(SEED_PRO_USERS);
+        }
+        setUsersError(null);
+      } catch (err: any) {
+        console.error('❌ Error fetching pro users:', err.message);
+        setUsersError(err.message);
+        console.log('⚠️ User fetch failed, using local seed data');
+        setAllUsers(SEED_PRO_USERS);
+        setUsers(SEED_PRO_USERS);
+        setFilteredUsers(SEED_PRO_USERS);
+      } finally {
+        setLoadingUsers(false);
+      }
+    };
+
+    fetchUsers();
+  }, []);
 
   // Live search (client-side) for users
   const performUserSearch = useCallback(() => {
