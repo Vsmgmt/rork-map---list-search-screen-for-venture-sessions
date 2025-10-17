@@ -29,9 +29,6 @@ export default function BoardEditScreen() {
   
   const [shortName, setShortName] = useState('');
   const [dimensions, setDimensions] = useState('');
-  const [lengthIn, setLengthIn] = useState('');
-  const [widthIn, setWidthIn] = useState('');
-  const [thicknessIn, setThicknessIn] = useState('');
   const [volumeL, setVolumeL] = useState('');
   const [pricePerDay, setPricePerDay] = useState('');
   const [pricePerWeek, setPricePerWeek] = useState('');
@@ -64,9 +61,6 @@ export default function BoardEditScreen() {
         if (data) {
           setShortName(data.short_name || '');
           setDimensions(data.dimensions_detail || '');
-          setLengthIn((data as any).length_in?.toString() || '');
-          setWidthIn((data as any).width_in?.toString() || '');
-          setThicknessIn((data as any).thickness_in?.toString() || '');
           setVolumeL((data as any).volume_l?.toString() || data.volume_l?.toString() || '');
           setPricePerDay((data as any).price_per_day?.toString() || (data as any).pricePerDay?.toString() || '');
           setPricePerWeek((data as any).price_per_week?.toString() || '');
@@ -94,9 +88,6 @@ export default function BoardEditScreen() {
       const updates = {
         short_name: shortName.trim(),
         dimensions_detail: dimensions.trim(),
-        length_in: lengthIn ? parseFloat(lengthIn) : null,
-        width_in: widthIn ? parseFloat(widthIn) : null,
-        thickness_in: thicknessIn ? parseFloat(thicknessIn) : null,
         volume_l: volumeL ? parseFloat(volumeL) : null,
         price_per_day: pricePerDay ? parseFloat(pricePerDay) : null,
         price_per_week: pricePerWeek ? parseFloat(pricePerWeek) : null,
@@ -110,9 +101,10 @@ export default function BoardEditScreen() {
       Alert.alert('Success', 'Board updated successfully', [
         { text: 'OK', onPress: () => router.back() }
       ]);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to update board:', error);
-      Alert.alert('Error', 'Failed to update board. Please try again.');
+      const errorMsg = error?.message || error?.error?.message || JSON.stringify(error) || 'Unknown error';
+      Alert.alert('Error', `Failed to update board: ${errorMsg}`);
     } finally {
       setSaving(false);
     }
@@ -207,56 +199,16 @@ export default function BoardEditScreen() {
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Specifications</Text>
             
-            <View style={styles.formRow}>
-              <View style={[styles.formGroup, styles.formGroupHalf]}>
-                <Text style={styles.label}>Length (inches)</Text>
-                <TextInput
-                  style={styles.input}
-                  value={lengthIn}
-                  onChangeText={setLengthIn}
-                  placeholder="110"
-                  placeholderTextColor="#999"
-                  keyboardType="decimal-pad"
-                />
-              </View>
-              
-              <View style={[styles.formGroup, styles.formGroupHalf]}>
-                <Text style={styles.label}>Width (inches)</Text>
-                <TextInput
-                  style={styles.input}
-                  value={widthIn}
-                  onChangeText={setWidthIn}
-                  placeholder="23"
-                  placeholderTextColor="#999"
-                  keyboardType="decimal-pad"
-                />
-              </View>
-            </View>
-            
-            <View style={styles.formRow}>
-              <View style={[styles.formGroup, styles.formGroupHalf]}>
-                <Text style={styles.label}>Thickness (inches)</Text>
-                <TextInput
-                  style={styles.input}
-                  value={thicknessIn}
-                  onChangeText={setThicknessIn}
-                  placeholder="3"
-                  placeholderTextColor="#999"
-                  keyboardType="decimal-pad"
-                />
-              </View>
-              
-              <View style={[styles.formGroup, styles.formGroupHalf]}>
-                <Text style={styles.label}>Volume (liters)</Text>
-                <TextInput
-                  style={styles.input}
-                  value={volumeL}
-                  onChangeText={setVolumeL}
-                  placeholder="75"
-                  placeholderTextColor="#999"
-                  keyboardType="decimal-pad"
-                />
-              </View>
+            <View style={styles.formGroup}>
+              <Text style={styles.label}>Volume (liters)</Text>
+              <TextInput
+                style={styles.input}
+                value={volumeL}
+                onChangeText={setVolumeL}
+                placeholder="75"
+                placeholderTextColor="#999"
+                keyboardType="decimal-pad"
+              />
             </View>
           </View>
           
