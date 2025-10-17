@@ -483,7 +483,7 @@ export default function SearchScreen() {
   const renderBoardCard = ({ item, index }: { item: Board; index: number }) => {
     const isSelected = item.id === selectedId;
     const inCart = isBoardInCart(item.id);
-    const cover = coverFor(item);
+    const cover = item.image_url || item.imageUrl || coverFor(item);
     const ownerAvatar = ownerAvatarFor(item);
 
     return (
