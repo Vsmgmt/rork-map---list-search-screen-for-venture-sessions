@@ -87,10 +87,21 @@ class SupabaseDatabase {
     }
 
     const { data, error } = await query.limit(1000);
-    if (error) throw error;
+    
+    console.log('🏄 Supabase getBoards query result:', {
+      hasError: !!error,
+      errorMessage: error?.message,
+      dataCount: data?.length || 0,
+      filters
+    });
+    
+    if (error) {
+      console.error('❌ Supabase getBoards error:', error);
+      throw error;
+    }
     
     // Map database fields to application fields with proper owner object
-    return (data || []).map(board => ({
+    const mappedBoards = (data || []).map(board => ({
       ...board,
       type: board.board_type,
       imageUrl: board.image_url || (board.images && board.images[0]) || '',
@@ -111,6 +122,18 @@ class SupabaseDatabase {
         total_boards: board.owner.boards_count || 0,
       } : undefined,
     }));
+    
+    console.log('✅ Supabase getBoards returning', mappedBoards.length, 'boards');
+    if (mappedBoards.length > 0) {
+      console.log('Sample board:', {
+        id: mappedBoards[0].id,
+        name: mappedBoards[0].short_name,
+        location: mappedBoards[0].location,
+        hasOwner: !!mappedBoards[0].owner
+      });
+    }
+    
+    return mappedBoards;
   }
 
   async getBoardById(id: string): Promise<Board | undefined> {
