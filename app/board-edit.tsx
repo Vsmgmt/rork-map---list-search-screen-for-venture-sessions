@@ -747,7 +747,7 @@ const styles = StyleSheet.create({
   },
   imagePickerButton: {
     width: '100%',
-    height: 200,
+    height: 320,
     backgroundColor: '#f8f9fa',
     borderRadius: 12,
     borderWidth: 2,
