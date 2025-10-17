@@ -86,7 +86,7 @@ class SupabaseDatabase {
       }
     }
 
-    const { data, error } = await query;
+    const { data, error } = await query.limit(1000);
     if (error) throw error;
     
     // Map database fields to application fields with proper owner object
