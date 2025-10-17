@@ -86,13 +86,17 @@ class SupabaseDatabase {
       }
     }
 
-    const { data, error } = await query.limit(1000);
+    const { data, error, count } = await query
+      .order('created_at', { ascending: false })
+      .range(0, 9999);
     
     console.log('🏄 Supabase getBoards query result:', {
       hasError: !!error,
       errorMessage: error?.message,
       dataCount: data?.length || 0,
-      filters
+      totalCount: count,
+      filters,
+      note: 'If dataCount < totalCount, increase range or implement pagination'
     });
     
     if (error) {
