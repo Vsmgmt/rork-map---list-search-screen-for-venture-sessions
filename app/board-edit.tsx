@@ -3,44 +3,53 @@ import {
   View,
   Text,
   StyleSheet,
+  TextInput,
   ScrollView,
   Pressable,
-  TextInput,
   Alert,
-  ActivityIndicator,
   Image,
+  ActivityIndicator,
+  Platform,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLocalSearchParams, router } from 'expo-router';
-import { X, Save, Sparkles } from 'lucide-react-native';
-import { boardQueries } from '@/lib/queries';
-import { useBoardsBackend } from '@/src/context/boards-backend';
-import { useBoards } from '@/src/context/boards';
-import { generateText } from '@rork/toolkit-sdk';
+import { ArrowLeft, Camera, Sparkles } from 'lucide-react-native';
+import { supabase } from '@/lib/supabase';
+import { BoardType } from '@/src/types/board';
 import Colors from '@/constants/colors';
+import * as ImagePicker from 'expo-image-picker';
+
+const BOARD_TYPES = [
+  { value: 'soft-top' as BoardType, label: 'Soft-top' },
+  { value: 'shortboard' as BoardType, label: 'Shortboard' },
+  { value: 'fish' as BoardType, label: 'Fish' },
+  { value: 'longboard' as BoardType, label: 'Longboard' },
+  { value: 'sup' as BoardType, label: 'SUP' },
+];
 
 export default function BoardEditScreen() {
   const insets = useSafeAreaInsets();
   const { boardId } = useLocalSearchParams<{ boardId: string }>();
-  const { getBoardById: getBackendBoard } = useBoardsBackend();
-  const { getBoardById: getLocalBoard } = useBoards();
   
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [board, setBoard] = useState<any>(null);
+  const [analyzingImage, setAnalyzingImage] = useState(false);
   
-  const [shortName, setShortName] = useState('');
+  const [name, setName] = useState('');
+  const [type, setType] = useState<BoardType>('shortboard');
   const [dimensions, setDimensions] = useState('');
-  const [volumeL, setVolumeL] = useState('');
-  const [pricePerDay, setPricePerDay] = useState('');
-  const [pricePerWeek, setPricePerWeek] = useState('');
-  const [location, setLocation] = useState('');
-  const [pickupSpot, setPickupSpot] = useState('');
-  const [boardType, setBoardType] = useState('');
   const [lengthIn, setLengthIn] = useState('');
   const [widthIn, setWidthIn] = useState('');
   const [thicknessIn, setThicknessIn] = useState('');
-  const [aiAnalyzing, setAiAnalyzing] = useState(false);
+  const [volumeL, setVolumeL] = useState('');
+  const [finSetup, setFinSetup] = useState('');
+  const [condition, setCondition] = useState('');
+  const [location, setLocation] = useState('');
+  const [salePrice, setSalePrice] = useState('');
+  const [rentPricePerDay, setRentPricePerDay] = useState('');
+  const [rentPricePerWeek, setRentPricePerWeek] = useState('');
+  const [imageUrl, setImageUrl] = useState('');
+  const [localImageUri, setLocalImageUri] = useState('');
   
   useEffect(() => {
     if (!boardId) {
@@ -48,141 +57,317 @@ export default function BoardEditScreen() {
       return;
     }
     
-    (async () => {
+    const fetchBoard = async () => {
       try {
-        console.log('Fetching board for edit:', boardId);
+        const { data, error } = await supabase
+          .from('boards')
+          .select('*')
+          .eq('id', boardId)
+          .single();
         
-        let data = getBackendBoard(boardId);
-        
-        if (!data) {
-          data = getLocalBoard(boardId);
-        }
-        
-        if (!data) {
-          data = await boardQueries.getById(boardId);
-        }
-        
-        console.log('Board data for edit:', data);
-        setBoard(data);
+        if (error) throw error;
         
         if (data) {
-          setShortName(data.short_name || '');
-          setDimensions(data.dimensions_detail || '');
-          setVolumeL((data as any).volume_l?.toString() || data.volume_l?.toString() || '');
-          setPricePerDay((data as any).price_per_day?.toString() || (data as any).pricePerDay?.toString() || '');
-          setPricePerWeek((data as any).price_per_week?.toString() || '');
-          setLocation((data as any).location || (data as any).location_city || '');
-          setPickupSpot((data as any).pickup_spot || '');
-          setBoardType((data as any).board_type || '');
-          setLengthIn((data as any).length_in?.toString() || '');
-          setWidthIn((data as any).width_in?.toString() || '');
-          setThicknessIn((data as any).thickness_in?.toString() || '');
+          setName(data.name || data.short_name || '');
+          setType(data.type || 'shortboard');
+          setDimensions(data.dimensions || data.dimensions_detail || '');
+          setLengthIn(data.length_in?.toString() || '');
+          setWidthIn(data.width_in?.toString() || '');
+          setThicknessIn(data.thickness_in?.toString() || '');
+          setVolumeL(data.volume_l?.toString() || '');
+          setFinSetup(data.fin_setup || '');
+          setCondition(data.condition || '');
+          setLocation(data.location || '');
+          setSalePrice(data.sale_price?.toString() || '');
+          setRentPricePerDay(data.rent_price_per_day?.toString() || '');
+          setRentPricePerWeek(data.rent_price_per_week?.toString() || '');
+          setImageUrl(data.image_url || '');
         }
-      } catch (error) {
+      } catch (error: any) {
         console.error('Failed to fetch board:', error);
+        Alert.alert('Error', 'Failed to load board data');
       } finally {
         setLoading(false);
       }
-    })();
-  }, [boardId, getBackendBoard, getLocalBoard]);
+    };
+    
+    fetchBoard();
+  }, [boardId]);
   
-  const handleAnalyzeImage = async () => {
-    if (!board) return;
-    
-    const imageUrl = board.image_url || board.imageUrl;
-    if (!imageUrl) {
-      Alert.alert('No Image', 'This board has no image to analyze');
-      return;
-    }
-    
-    setAiAnalyzing(true);
+  const handlePickImage = async () => {
     try {
-      const prompt = `Analyze this surfboard image and extract the following information in JSON format:
-{
-  "short_name": "descriptive short name (e.g., Blue Longboard, Red Fish)",
-  "board_type": "one of: shortboard, longboard, fish, funboard, sup, soft-top",
-  "dimensions_detail": "estimated dimensions in format like 9'2'' x 23'' x 3''",
-  "length_in": estimated length in inches (number only),
-  "width_in": estimated width in inches (number only),
-  "thickness_in": estimated thickness in inches (number only),
-  "volume_l": estimated volume in liters (number only)
-}
-
-Only return valid JSON. Make reasonable estimates based on the visual appearance.`;
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
       
-      const response = await generateText({
+      if (status !== 'granted') {
+        Alert.alert('Permission Required', 'Please allow access to your photos to upload board images.');
+        return;
+      }
+      
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [3, 4],
+        quality: 0.8,
+      });
+      
+      if (!result.canceled && result.assets[0]) {
+        const uri = result.assets[0].uri;
+        setLocalImageUri(uri);
+        
+        await analyzeImageWithAI(uri);
+      }
+    } catch (error) {
+      console.error('Image picker error:', error);
+      Alert.alert('Error', 'Failed to pick image');
+    }
+  };
+  
+  const analyzeImageWithAI = async (uri: string) => {
+    setAnalyzingImage(true);
+    
+    try {
+      let base64Image: string;
+      
+      if (Platform.OS === 'web') {
+        const response = await fetch(uri);
+        const blob = await response.blob();
+        const reader = new FileReader();
+        
+        base64Image = await new Promise((resolve, reject) => {
+          reader.onloadend = () => {
+            const result = reader.result as string;
+            resolve(result.split(',')[1]);
+          };
+          reader.onerror = reject;
+          reader.readAsDataURL(blob);
+        });
+      } else {
+        const response = await fetch(uri);
+        const blob = await response.blob();
+        const reader = new FileReader();
+        
+        base64Image = await new Promise((resolve, reject) => {
+          reader.onloadend = () => {
+            const result = reader.result as string;
+            resolve(result.split(',')[1]);
+          };
+          reader.onerror = reject;
+          reader.readAsDataURL(blob);
+        });
+      }
+      
+      console.log('Sending AI analysis request...');
+      console.log('Image base64 length:', base64Image?.length || 0);
+      
+      const requestBody = {
         messages: [
           {
             role: 'user',
             content: [
-              { type: 'text', text: prompt },
-              { type: 'image', image: imageUrl }
-            ]
-          }
-        ]
+              {
+                type: 'text',
+                text: `Please analyze this surfboard image comprehensively and extract all visible information to auto-fill a rental listing form. Extract and format the following (if visible):
+
+1. Board Name/Brand (e.g., "Channel Islands Rocket", "Lost Puddle Jumper", or generic like "Blue Shortboard")
+2. Board Type (one of: soft-top, shortboard, fish, longboard, sup)
+3. Dimensions in format "L x W x T" (e.g., "6'2 x 19.5 x 2.5")
+4. Length in inches (numeric only)
+5. Width in inches (numeric only)
+6. Thickness in inches (numeric only)
+7. Volume in liters if visible (numeric only)
+8. Fin setup (e.g., "Thruster", "Quad", "Single")
+9. Condition (e.g., "Excellent", "Good", "Fair")
+
+Format your response as:
+NAME: [board name]
+TYPE: [board type]
+DIMENSIONS: [dimensions]
+LENGTH: [length in inches]
+WIDTH: [width in inches]
+THICKNESS: [thickness in inches]
+VOLUME: [volume in liters]
+FIN_SETUP: [fin setup]
+CONDITION: [condition]
+
+If any field is not visible or unclear, write "NOT_VISIBLE" for that field.`,
+              },
+              {
+                type: 'image',
+                image: base64Image,
+              },
+            ],
+          },
+        ],
+      };
+      
+      console.log('Request body prepared');
+      
+      const aiResponse = await fetch('https://toolkit.rork.com/text/llm/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(requestBody),
       });
       
-      console.log('AI response:', response);
+      console.log('AI Response status:', aiResponse.status);
       
-      const jsonMatch = response.match(/\{[\s\S]*\}/);
-      if (!jsonMatch) {
-        throw new Error('Could not parse AI response');
+      if (!aiResponse.ok) {
+        const errorText = await aiResponse.text();
+        console.error('AI API error response:', errorText);
+        throw new Error(`AI API responded with status ${aiResponse.status}: ${errorText}`);
       }
       
-      const data = JSON.parse(jsonMatch[0]);
+      const result = await aiResponse.json();
+      const completion = result.completion;
       
-      if (data.short_name) setShortName(data.short_name);
-      if (data.board_type) setBoardType(data.board_type);
-      if (data.dimensions_detail) setDimensions(data.dimensions_detail);
-      if (data.length_in) setLengthIn(data.length_in.toString());
-      if (data.width_in) setWidthIn(data.width_in.toString());
-      if (data.thickness_in) setThicknessIn(data.thickness_in.toString());
-      if (data.volume_l) setVolumeL(data.volume_l.toString());
+      console.log('AI Analysis Result:', completion);
       
-      Alert.alert('Success', 'AI analysis completed! Review and adjust the fields as needed.');
+      const nameMatch = completion.match(/NAME:\s*(.+?)(?=\n|$)/i);
+      const typeMatch = completion.match(/TYPE:\s*(.+?)(?=\n|$)/i);
+      const dimensionsMatch = completion.match(/DIMENSIONS:\s*(.+?)(?=\n|$)/i);
+      const lengthMatch = completion.match(/LENGTH:\s*([0-9.]+)/i);
+      const widthMatch = completion.match(/WIDTH:\s*([0-9.]+)/i);
+      const thicknessMatch = completion.match(/THICKNESS:\s*([0-9.]+)/i);
+      const volumeMatch = completion.match(/VOLUME:\s*([0-9.]+)/i);
+      const finSetupMatch = completion.match(/FIN_SETUP:\s*(.+?)(?=\n|$)/i);
+      const conditionMatch = completion.match(/CONDITION:\s*(.+?)(?=\n|$)/i);
+      
+      let fieldsUpdated = 0;
+      
+      if (nameMatch && nameMatch[1].trim() !== 'NOT_VISIBLE') {
+        setName(nameMatch[1].trim());
+        fieldsUpdated++;
+      }
+      
+      if (typeMatch && typeMatch[1].trim() !== 'NOT_VISIBLE') {
+        const typeValue = typeMatch[1].trim().toLowerCase();
+        const matchedType = BOARD_TYPES.find(t => 
+          typeValue.includes(t.value) || typeValue.includes(t.value.replace('-', ''))
+        );
+        if (matchedType) {
+          setType(matchedType.value);
+          fieldsUpdated++;
+        }
+      }
+      
+      if (dimensionsMatch && dimensionsMatch[1].trim() !== 'NOT_VISIBLE') {
+        setDimensions(dimensionsMatch[1].trim());
+        fieldsUpdated++;
+      }
+      
+      if (lengthMatch) {
+        setLengthIn(lengthMatch[1]);
+        fieldsUpdated++;
+      }
+      
+      if (widthMatch) {
+        setWidthIn(widthMatch[1]);
+        fieldsUpdated++;
+      }
+      
+      if (thicknessMatch) {
+        setThicknessIn(thicknessMatch[1]);
+        fieldsUpdated++;
+      }
+      
+      if (volumeMatch) {
+        setVolumeL(volumeMatch[1]);
+        fieldsUpdated++;
+      }
+      
+      if (finSetupMatch && finSetupMatch[1].trim() !== 'NOT_VISIBLE') {
+        setFinSetup(finSetupMatch[1].trim());
+        fieldsUpdated++;
+      }
+      
+      if (conditionMatch && conditionMatch[1].trim() !== 'NOT_VISIBLE') {
+        setCondition(conditionMatch[1].trim());
+        fieldsUpdated++;
+      }
+      
+      if (fieldsUpdated > 0) {
+        Alert.alert(
+          'AI Auto-fill Complete! 🤖',
+          `Successfully extracted and filled ${fieldsUpdated} field${fieldsUpdated !== 1 ? 's' : ''} from the photo. Review and adjust as needed.`
+        );
+      } else {
+        Alert.alert(
+          'Photo Uploaded',
+          'Could not extract information from this photo automatically. Please fill in the fields manually.'
+        );
+      }
     } catch (error: any) {
-      console.error('AI analysis failed:', error);
-      Alert.alert('Analysis Failed', error.message || 'Could not analyze image');
+      console.error('AI analysis error:', error);
+      console.error('Error stack:', error.stack);
+      
+      let errorMessage = 'The photo was uploaded but automatic analysis is unavailable. Please fill in the fields manually.';
+      
+      if (error.message?.includes('Network request failed')) {
+        errorMessage = 'Network error: Unable to connect to AI service. Please check your internet connection and try again.';
+      } else if (error.message) {
+        errorMessage = `Error: ${error.message}`;
+      }
+      
+      Alert.alert(
+        'AI analysis failed',
+        errorMessage
+      );
     } finally {
-      setAiAnalyzing(false);
+      setAnalyzingImage(false);
     }
   };
-
+  
   const handleSave = async () => {
-    if (!board) return;
+    if (!name.trim()) {
+      Alert.alert('Validation Error', 'Board name is required');
+      return;
+    }
     
     setSaving(true);
+    
     try {
-      const updates: any = {};
+      const updateData: any = {
+        name: name.trim(),
+        short_name: name.trim(),
+        type,
+        dimensions: dimensions.trim() || null,
+        dimensions_detail: dimensions.trim() || null,
+        length_in: lengthIn ? parseFloat(lengthIn) : null,
+        width_in: widthIn ? parseFloat(widthIn) : null,
+        thickness_in: thicknessIn ? parseFloat(thicknessIn) : null,
+        volume_l: volumeL ? parseFloat(volumeL) : null,
+        fin_setup: finSetup.trim() || null,
+        condition: condition.trim() || null,
+        location: location.trim() || null,
+        sale_price: salePrice ? parseFloat(salePrice) : null,
+        rent_price_per_day: rentPricePerDay ? parseFloat(rentPricePerDay) : null,
+        rent_price_per_week: rentPricePerWeek ? parseFloat(rentPricePerWeek) : null,
+        price_per_day: rentPricePerDay ? parseFloat(rentPricePerDay) : null,
+        price_per_week: rentPricePerWeek ? parseFloat(rentPricePerWeek) : null,
+      };
       
-      if (shortName.trim()) updates.short_name = shortName.trim();
-      if (dimensions.trim()) updates.dimensions_detail = dimensions.trim();
-      if (volumeL) updates.volume_l = parseFloat(volumeL);
-      if (pricePerDay) updates.price_per_day = parseFloat(pricePerDay);
-      if (pricePerWeek) updates.price_per_week = parseFloat(pricePerWeek);
-      if (location.trim()) updates.location = location.trim();
-      if (pickupSpot.trim()) updates.pickup_spot = pickupSpot.trim();
-      if (boardType.trim()) updates.board_type = boardType.trim();
-      if (lengthIn) updates.length_in = parseFloat(lengthIn);
-      if (widthIn) updates.width_in = parseFloat(widthIn);
-      if (thicknessIn) updates.thickness_in = parseFloat(thicknessIn);
+      console.log('Updating board with data:', updateData);
       
-      if (Object.keys(updates).length === 0) {
-        Alert.alert('No Changes', 'No fields were modified');
-        setSaving(false);
-        return;
+      const { data, error } = await supabase
+        .from('boards')
+        .update(updateData)
+        .eq('id', boardId)
+        .select();
+      
+      if (error) {
+        console.error('Supabase error:', error);
+        throw new Error(error.message || 'Failed to update board');
       }
       
-      console.log('Updating board:', boardId, updates);
-      await boardQueries.update(boardId, updates);
+      console.log('Board updated successfully:', data);
       
       Alert.alert('Success', 'Board updated successfully', [
         { text: 'OK', onPress: () => router.back() }
       ]);
     } catch (error: any) {
       console.error('Failed to update board:', error);
-      const errorMsg = error?.message || 'Unknown error';
-      Alert.alert('Error', `Failed to update board: ${errorMsg}`);
+      Alert.alert('Error', `Failed to update board: ${error.message || 'Unknown error'}`);
     } finally {
       setSaving(false);
     }
@@ -192,32 +377,15 @@ Only return valid JSON. Make reasonable estimates based on the visual appearance
     return (
       <View style={[styles.container, { paddingTop: insets.top }]}>
         <View style={styles.header}>
-          <Pressable style={styles.closeButton} onPress={() => router.back()}>
-            <X size={24} color="#333" />
+          <Pressable style={styles.backButton} onPress={() => router.back()}>
+            <ArrowLeft size={24} color="#333" />
           </Pressable>
           <Text style={styles.headerTitle}>Edit Board</Text>
           <View style={styles.headerSpacer} />
         </View>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={Colors.light.tint} />
-          <Text style={styles.loadingText}>Loading board...</Text>
-        </View>
-      </View>
-    );
-  }
-  
-  if (!board) {
-    return (
-      <View style={[styles.container, { paddingTop: insets.top }]}>
-        <View style={styles.header}>
-          <Pressable style={styles.closeButton} onPress={() => router.back()}>
-            <X size={24} color="#333" />
-          </Pressable>
-          <Text style={styles.headerTitle}>Edit Board</Text>
-          <View style={styles.headerSpacer} />
-        </View>
-        <View style={styles.errorContainer}>
-          <Text style={styles.errorText}>Board not found</Text>
+          <Text style={styles.loadingText}>Loading board data...</Text>
         </View>
       </View>
     );
@@ -226,200 +394,224 @@ Only return valid JSON. Make reasonable estimates based on the visual appearance
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
       <View style={styles.header}>
-        <Pressable style={styles.closeButton} onPress={() => router.back()}>
-          <X size={24} color="#333" />
+        <Pressable style={styles.backButton} onPress={() => router.back()}>
+          <ArrowLeft size={24} color="#333" />
         </Pressable>
         <Text style={styles.headerTitle}>Edit Board</Text>
-        <Pressable 
-          style={[styles.saveButton, saving && styles.saveButtonDisabled]} 
+        <Pressable
+          style={[styles.saveButton, saving && styles.saveButtonDisabled]}
           onPress={handleSave}
           disabled={saving}
         >
           {saving ? (
             <ActivityIndicator size="small" color="white" />
           ) : (
-            <>
-              <Save size={18} color="white" />
-              <Text style={styles.saveButtonText}>Save</Text>
-            </>
+            <Text style={styles.saveButtonText}>Save</Text>
           )}
         </Pressable>
       </View>
       
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-        <View style={styles.formContainer}>
-          {(board.image_url || board.imageUrl) && (
-            <View style={styles.imageSection}>
-              <Image
-                source={{ uri: board.image_url || board.imageUrl }}
-                style={styles.boardImage}
-                resizeMode="cover"
-              />
-              <Pressable
-                style={[styles.aiButton, aiAnalyzing && styles.aiButtonDisabled]}
-                onPress={handleAnalyzeImage}
-                disabled={aiAnalyzing}
-              >
-                {aiAnalyzing ? (
-                  <ActivityIndicator size="small" color="white" />
-                ) : (
-                  <>
-                    <Sparkles size={20} color="white" />
-                    <Text style={styles.aiButtonText}>Analyze with AI</Text>
-                  </>
-                )}
-              </Pressable>
-            </View>
-          )}
+        <View style={styles.content}>
+          {/* Image Picker */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Board Image</Text>
+            <Pressable 
+              style={styles.imagePickerButton} 
+              onPress={handlePickImage}
+              disabled={analyzingImage}
+            >
+              {localImageUri || imageUrl ? (
+                <Image
+                  source={{ uri: localImageUri || imageUrl }}
+                  style={styles.previewImage}
+                  resizeMode="contain"
+                />
+              ) : (
+                <View style={styles.imagePickerPlaceholder}>
+                  <Camera size={40} color="#999" />
+                  <Text style={styles.imagePickerText}>Tap to upload photo</Text>
+                </View>
+              )}
+            </Pressable>
+            {analyzingImage && (
+              <View style={styles.analyzingOverlay}>
+                <ActivityIndicator size="small" color={Colors.light.tint} />
+                <Text style={styles.analyzingText}>Analyzing image with AI...</Text>
+              </View>
+            )}
+            <Pressable 
+              style={styles.aiButton} 
+              onPress={handlePickImage}
+              disabled={analyzingImage}
+            >
+              <Sparkles size={16} color="white" />
+              <Text style={styles.aiButtonText}>
+                {analyzingImage ? 'Analyzing...' : 'Upload & Auto-fill with AI'}
+              </Text>
+            </Pressable>
+          </View>
+          
+          {/* Basic Info */}
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Basic Information</Text>
             
-            <View style={styles.formGroup}>
-              <Text style={styles.label}>Short Name</Text>
-              <TextInput
-                style={styles.input}
-                value={shortName}
-                onChangeText={setShortName}
-                placeholder="e.g., Blue Cruiser"
-                placeholderTextColor="#999"
-              />
-            </View>
+            <Text style={styles.label}>Board Name</Text>
+            <TextInput
+              style={styles.input}
+              value={name}
+              onChangeText={setName}
+              placeholder="e.g., Channel Islands Rocket"
+            />
             
-            <View style={styles.formGroup}>
-              <Text style={styles.label}>Board Type</Text>
-              <TextInput
-                style={styles.input}
-                value={boardType}
-                onChangeText={setBoardType}
-                placeholder="e.g., shortboard, longboard, fish"
-                placeholderTextColor="#999"
-              />
-            </View>
-            
-            <View style={styles.formGroup}>
-              <Text style={styles.label}>Dimensions Detail</Text>
-              <TextInput
-                style={styles.input}
-                value={dimensions}
-                onChangeText={setDimensions}
-                placeholder="e.g., 9'2'' x 23'' x 3''"
-                placeholderTextColor="#999"
-              />
+            <Text style={styles.label}>Board Type</Text>
+            <View style={styles.typeSelector}>
+              {BOARD_TYPES.map((boardType) => (
+                <Pressable
+                  key={boardType.value}
+                  style={[
+                    styles.typeButton,
+                    type === boardType.value && styles.typeButtonActive,
+                  ]}
+                  onPress={() => setType(boardType.value)}
+                >
+                  <Text
+                    style={[
+                      styles.typeButtonText,
+                      type === boardType.value && styles.typeButtonTextActive,
+                    ]}
+                  >
+                    {boardType.label}
+                  </Text>
+                </Pressable>
+              ))}
             </View>
           </View>
           
+          {/* Dimensions */}
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Specifications</Text>
+            <Text style={styles.sectionTitle}>Dimensions</Text>
             
-            <View style={styles.formRow}>
-              <View style={[styles.formGroup, styles.formGroupThird]}>
-                <Text style={styles.label}>Length (in)</Text>
+            <Text style={styles.label}>Dimensions (optional)</Text>
+            <TextInput
+              style={styles.input}
+              value={dimensions}
+              onChangeText={setDimensions}
+              placeholder="e.g., 6'2 x 19.5 x 2.5"
+            />
+            
+            <View style={styles.row}>
+              <View style={styles.flex1}>
+                <Text style={styles.label}>Length (inches)</Text>
                 <TextInput
                   style={styles.input}
                   value={lengthIn}
                   onChangeText={setLengthIn}
-                  placeholder="110"
-                  placeholderTextColor="#999"
+                  placeholder="74"
                   keyboardType="decimal-pad"
                 />
               </View>
               
-              <View style={[styles.formGroup, styles.formGroupThird]}>
-                <Text style={styles.label}>Width (in)</Text>
+              <View style={styles.flex1}>
+                <Text style={styles.label}>Width (inches)</Text>
                 <TextInput
                   style={styles.input}
                   value={widthIn}
                   onChangeText={setWidthIn}
-                  placeholder="23"
-                  placeholderTextColor="#999"
+                  placeholder="19.5"
                   keyboardType="decimal-pad"
                 />
               </View>
-              
-              <View style={[styles.formGroup, styles.formGroupThird]}>
-                <Text style={styles.label}>Thick (in)</Text>
+            </View>
+            
+            <View style={styles.row}>
+              <View style={styles.flex1}>
+                <Text style={styles.label}>Thickness (inches)</Text>
                 <TextInput
                   style={styles.input}
                   value={thicknessIn}
                   onChangeText={setThicknessIn}
-                  placeholder="3"
-                  placeholderTextColor="#999"
-                  keyboardType="decimal-pad"
-                />
-              </View>
-            </View>
-            
-            <View style={styles.formGroup}>
-              <Text style={styles.label}>Volume (liters)</Text>
-              <TextInput
-                style={styles.input}
-                value={volumeL}
-                onChangeText={setVolumeL}
-                placeholder="75"
-                placeholderTextColor="#999"
-                keyboardType="decimal-pad"
-              />
-            </View>
-          </View>
-          
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Pricing</Text>
-            
-            <View style={styles.formRow}>
-              <View style={[styles.formGroup, styles.formGroupHalf]}>
-                <Text style={styles.label}>Price Per Day ($)</Text>
-                <TextInput
-                  style={styles.input}
-                  value={pricePerDay}
-                  onChangeText={setPricePerDay}
-                  placeholder="25"
-                  placeholderTextColor="#999"
+                  placeholder="2.5"
                   keyboardType="decimal-pad"
                 />
               </View>
               
-              <View style={[styles.formGroup, styles.formGroupHalf]}>
-                <Text style={styles.label}>Price Per Week ($)</Text>
+              <View style={styles.flex1}>
+                <Text style={styles.label}>Volume (liters)</Text>
                 <TextInput
                   style={styles.input}
-                  value={pricePerWeek}
-                  onChangeText={setPricePerWeek}
-                  placeholder="150"
-                  placeholderTextColor="#999"
+                  value={volumeL}
+                  onChangeText={setVolumeL}
+                  placeholder="30"
                   keyboardType="decimal-pad"
                 />
               </View>
             </View>
           </View>
           
+          {/* Additional Details */}
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Location</Text>
+            <Text style={styles.sectionTitle}>Additional Details</Text>
             
-            <View style={styles.formGroup}>
-              <Text style={styles.label}>Location</Text>
-              <TextInput
-                style={styles.input}
-                value={location}
-                onChangeText={setLocation}
-                placeholder="e.g., Waikiki"
-                placeholderTextColor="#999"
-              />
-            </View>
+            <Text style={styles.label}>Fin Setup (optional)</Text>
+            <TextInput
+              style={styles.input}
+              value={finSetup}
+              onChangeText={setFinSetup}
+              placeholder="e.g., Thruster, Quad, Single"
+            />
             
-            <View style={styles.formGroup}>
-              <Text style={styles.label}>Pickup Spot</Text>
-              <TextInput
-                style={styles.input}
-                value={pickupSpot}
-                onChangeText={setPickupSpot}
-                placeholder="e.g., Waikiki Beach Parking"
-                placeholderTextColor="#999"
-              />
-            </View>
+            <Text style={styles.label}>Condition (optional)</Text>
+            <TextInput
+              style={styles.input}
+              value={condition}
+              onChangeText={setCondition}
+              placeholder="e.g., Excellent, Good, Fair"
+            />
+            
+            <Text style={styles.label}>Location (optional)</Text>
+            <TextInput
+              style={styles.input}
+              value={location}
+              onChangeText={setLocation}
+              placeholder="e.g., Waikiki, North Shore"
+            />
           </View>
+          
+          {/* Pricing */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Pricing</Text>
+            
+            <Text style={styles.label}>Sale Price (optional)</Text>
+            <TextInput
+              style={styles.input}
+              value={salePrice}
+              onChangeText={setSalePrice}
+              placeholder="599"
+              keyboardType="decimal-pad"
+            />
+            
+            <Text style={styles.label}>Rent Price Per Day (optional)</Text>
+            <TextInput
+              style={styles.input}
+              value={rentPricePerDay}
+              onChangeText={setRentPricePerDay}
+              placeholder="25"
+              keyboardType="decimal-pad"
+            />
+            
+            <Text style={styles.label}>Rent Price Per Week (optional)</Text>
+            <TextInput
+              style={styles.input}
+              value={rentPricePerWeek}
+              onChangeText={setRentPricePerWeek}
+              placeholder="140"
+              keyboardType="decimal-pad"
+            />
+          </View>
+          
+          <View style={{ height: 100 }} />
         </View>
-        
-        <View style={styles.bottomPadding} />
       </ScrollView>
     </View>
   );
@@ -440,10 +632,8 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#e0e0e0',
   },
-  closeButton: {
+  backButton: {
     padding: 8,
-    borderRadius: 20,
-    backgroundColor: '#f0f0f0',
   },
   headerTitle: {
     fontSize: 18,
@@ -451,16 +641,15 @@ const styles = StyleSheet.create({
     color: '#333',
   },
   headerSpacer: {
-    width: 80,
+    width: 60,
   },
   saveButton: {
     backgroundColor: Colors.light.tint,
-    borderRadius: 20,
     paddingHorizontal: 16,
     paddingVertical: 8,
-    flexDirection: 'row',
+    borderRadius: 8,
+    minWidth: 60,
     alignItems: 'center',
-    gap: 6,
   },
   saveButtonDisabled: {
     opacity: 0.6,
@@ -476,23 +665,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   loadingText: {
-    fontSize: 14,
-    color: '#999',
-    marginTop: 8,
-  },
-  errorContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  errorText: {
+    marginTop: 16,
     fontSize: 16,
     color: '#666',
   },
   scrollView: {
     flex: 1,
   },
-  formContainer: {
+  content: {
     padding: 16,
   },
   section: {
@@ -507,54 +687,12 @@ const styles = StyleSheet.create({
     color: '#333',
     marginBottom: 16,
   },
-  formGroup: {
-    marginBottom: 16,
-  },
-  formGroupHalf: {
-    flex: 1,
-  },
-  formGroupThird: {
-    flex: 1,
-  },
-  formRow: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  imageSection: {
-    backgroundColor: 'white',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 16,
-    alignItems: 'center',
-  },
-  boardImage: {
-    width: '100%',
-    height: 200,
-    borderRadius: 8,
-    marginBottom: 12,
-  },
-  aiButton: {
-    backgroundColor: '#8B5CF6',
-    borderRadius: 20,
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  aiButtonDisabled: {
-    opacity: 0.6,
-  },
-  aiButtonText: {
-    color: 'white',
-    fontSize: 16,
-    fontWeight: '600',
-  },
   label: {
     fontSize: 14,
     fontWeight: '500',
-    color: '#333',
+    color: '#666',
     marginBottom: 8,
+    marginTop: 12,
   },
   input: {
     backgroundColor: '#f8f9fa',
@@ -566,7 +704,88 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#e0e0e0',
   },
-  bottomPadding: {
-    height: 40,
+  typeSelector: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  typeButton: {
+    backgroundColor: '#f8f9fa',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+  },
+  typeButtonActive: {
+    backgroundColor: Colors.light.tint,
+    borderColor: Colors.light.tint,
+  },
+  typeButtonText: {
+    fontSize: 14,
+    color: '#666',
+  },
+  typeButtonTextActive: {
+    color: 'white',
+    fontWeight: '600',
+  },
+  row: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  flex1: {
+    flex: 1,
+  },
+  imagePickerButton: {
+    width: '100%',
+    height: 200,
+    backgroundColor: '#f8f9fa',
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: '#e0e0e0',
+    borderStyle: 'dashed',
+    justifyContent: 'center',
+    alignItems: 'center',
+    overflow: 'hidden',
+  },
+  imagePickerPlaceholder: {
+    alignItems: 'center',
+    gap: 8,
+  },
+  imagePickerText: {
+    fontSize: 14,
+    color: '#999',
+  },
+  previewImage: {
+    width: '100%',
+    height: '100%',
+  },
+  aiButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: Colors.light.tint,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    marginTop: 12,
+    gap: 8,
+  },
+  aiButtonText: {
+    color: 'white',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  analyzingOverlay: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 8,
+    gap: 8,
+  },
+  analyzingText: {
+    fontSize: 14,
+    color: Colors.light.tint,
+    fontWeight: '500',
   },
 });
