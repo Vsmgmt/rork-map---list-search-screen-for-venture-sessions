@@ -21,6 +21,14 @@ import { useBoards } from '@/src/context/boards';
 
 import { Board, BoardType } from '@/src/types/board';
 
+function extractCityState(location: string): string {
+  const parts = location.split(',').map(p => p.trim());
+  if (parts.length >= 2) {
+    return `${parts[parts.length - 2]}, ${parts[parts.length - 1]}`;
+  }
+  return location;
+}
+
 export default function BoardsListScreen() {
   const insets = useSafeAreaInsets();
   const { addToCart, getItemCount, cartItems } = useCart();
@@ -192,14 +200,12 @@ export default function BoardsListScreen() {
           </View>
         </Pressable>
         <Text style={styles.cardTitle} numberOfLines={1}>{item.short_name}</Text>
-        <Text style={styles.cardDims}>{item.dimensions_detail}</Text>
-        {item.price_per_day && (
-          <Text style={styles.cardPrice}>
-            ${item.price_per_day}/day • ${item.price_per_week}/week
-          </Text>
-        )}
+        <Text style={styles.cardDims} numberOfLines={1}>{item.dimensions_detail}</Text>
+        <Text style={styles.cardPrice}>
+          {item.price_per_day ? `${item.price_per_day}/day • ${item.price_per_week}/week` : 'Price TBD'}
+        </Text>
         <View style={styles.locationRow}>
-          <Text style={styles.cardLocation}>{item.location}</Text>
+          <Text style={styles.cardLocation} numberOfLines={1}>{extractCityState(item.location)}</Text>
           <View style={styles.locationIcons}>
             {item.delivery_available && (
               <View style={styles.deliveryIcon}>
@@ -569,6 +575,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 2,
     elevation: 2,
+    minHeight: Platform.OS === 'web' ? 360 : 340,
   },
   cardSelected: {
     borderWidth: 2,
@@ -604,23 +611,27 @@ const styles = StyleSheet.create({
     fontSize: Platform.OS === 'web' ? 14 : 16,
     fontWeight: '600',
     marginBottom: Platform.OS === 'web' ? 3 : 4,
+    height: Platform.OS === 'web' ? 20 : 22,
   },
   cardDims: {
     fontSize: Platform.OS === 'web' ? 12 : 14,
     color: '#666',
     marginBottom: Platform.OS === 'web' ? 3 : 4,
+    height: Platform.OS === 'web' ? 18 : 20,
   },
   cardPrice: {
     fontSize: Platform.OS === 'web' ? 12 : 14,
     fontWeight: '500',
     color: '#4CAF50',
     marginBottom: Platform.OS === 'web' ? 3 : 4,
+    height: Platform.OS === 'web' ? 18 : 20,
   },
   locationRow: {
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: Platform.OS === 'web' ? 6 : 8,
     gap: 6,
+    height: 20,
   },
   cardLocation: {
     fontSize: Platform.OS === 'web' ? 12 : 14,
