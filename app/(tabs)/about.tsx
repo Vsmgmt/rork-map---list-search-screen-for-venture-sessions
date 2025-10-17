@@ -1,7 +1,7 @@
 import { StyleSheet, Text, View, ScrollView, TouchableOpacity } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { router } from "expo-router";
-import { ArrowRight, Shield, Building2 } from "lucide-react-native";
+import { ArrowRight, Shield, Building2, Crown } from "lucide-react-native";
 import Colors from "@/constants/colors";
 
 
@@ -9,9 +9,11 @@ export default function AboutScreen() {
   const insets = useSafeAreaInsets();
 
   const handleAdminAccess = () => {
-    // For demo purposes, allow access to admin dashboard
-    // In a real app, you'd check user permissions here
     router.push('/(tabs)/admin');
+  };
+
+  const handleProAccess = () => {
+    router.push('/(tabs)/pro');
   };
 
   const handleProApplication = () => {
@@ -54,7 +56,7 @@ export default function AboutScreen() {
         
         {/* Management Section */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Management</Text>
+          <Text style={styles.sectionTitle}>Management & Business Tools</Text>
           
           <TouchableOpacity 
             style={styles.managementButton}
@@ -67,6 +69,22 @@ export default function AboutScreen() {
               <Text style={styles.managementTitle}>Admin Dashboard</Text>
               <Text style={styles.managementDescription}>
                 Manage bookings, view analytics, and oversee operations
+              </Text>
+            </View>
+            <ArrowRight size={20} color="#666" />
+          </TouchableOpacity>
+          
+          <TouchableOpacity 
+            style={styles.managementButton}
+            onPress={handleProAccess}
+          >
+            <View style={styles.managementIcon}>
+              <Crown size={24} color={Colors.light.tint} />
+            </View>
+            <View style={styles.managementContent}>
+              <Text style={styles.managementTitle}>Pro Dashboard</Text>
+              <Text style={styles.managementDescription}>
+                Add boards, manage inventory, and track bookings
               </Text>
             </View>
             <ArrowRight size={20} color="#666" />

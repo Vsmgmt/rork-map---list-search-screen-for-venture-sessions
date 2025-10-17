@@ -103,6 +103,24 @@ export default function TabLayout() {
           tabBarIcon: ({ color }) => <Info color={color} />,
         }}
       />
+      <Tabs.Screen
+        name="pro"
+        options={{
+          href: null,
+        }}
+      />
+      <Tabs.Screen
+        name="admin"
+        options={{
+          href: null,
+        }}
+      />
+      <Tabs.Screen
+        name="application"
+        options={{
+          href: null,
+        }}
+      />
     </Tabs>
   );
 }
