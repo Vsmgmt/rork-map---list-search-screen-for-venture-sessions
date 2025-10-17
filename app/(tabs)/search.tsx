@@ -17,11 +17,10 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ShoppingCart, Truck, Info, X } from 'lucide-react-native';
 import { router } from 'expo-router';
 import { useCart } from '@/src/context/cart';
-import { useBoardsBackend } from '@/src/context/boards-backend';
 import { Board, BoardType } from '@/src/types/board';
-import { trpc } from '@/lib/trpc';
 import { supabase } from '@/lib/supabase';
 import { SEED_PRO_USERS } from '@/src/data/seed-pro-users';
+import { SEED_BOARDS } from '@/src/data/seed-boards';
 
 interface User {
   id: string;
@@ -53,19 +52,104 @@ function ownerAvatarFor(item: any): string | null {
   return typeof u === 'string' && u.startsWith('http') ? u : null;
 }
 
+type SupabaseBoard = {
+  id: string;
+  name?: string | null;
+  title?: string | null;
+  shaper?: string | null;
+  dimensions?: string | null;
+  length_in?: number | null;
+  width_in?: number | null;
+  thickness_in?: number | null;
+  volume_l?: number | null;
+  fin_setup?: string | null;
+  condition?: string | null;
+  location?: string | null;
+  availability_start?: string | null;
+  availability_end?: string | null;
+  sale_price?: number | null;
+  rent_price_per_day?: number | null;
+  rent_price_per_week?: number | null;
+  owner_id?: string | null;
+  owner_name?: string | null;
+  owner_avatar_url?: string | null;
+  image_url?: string | null;
+  image_urls?: string[];
+  images?: { image_url: string }[];
+  owner?: {
+    id: string;
+    name?: string | null;
+    avatar_url?: string | null;
+  };
+  type?: string | null;
+  short_name?: string | null;
+  dimensions_detail?: string | null;
+  price_per_day?: number | null;
+  price_per_week?: number | null;
+  available_start?: string | null;
+  available_end?: string | null;
+  delivery_available?: boolean | null;
+  delivery_price?: number | null;
+  pickup_spot?: string | null;
+  lat?: number | null;
+  lon?: number | null;
+  created_at?: string | null;
+};
+
+function coerceBoard(row: SupabaseBoard): Board {
+  const gallery = row.image_urls ?? row.images?.map((i: any) => i.image_url) ?? [];
+  const primary = row.image_url ?? gallery[0] ?? '';
+  
+  const boardType: BoardType = 
+    row.type === 'soft-top' ? 'soft-top' :
+    row.type === 'shortboard' ? 'shortboard' :
+    row.type === 'fish' ? 'fish' :
+    row.type === 'longboard' ? 'longboard' :
+    row.type === 'sup' ? 'sup' : 'shortboard';
+  
+  return {
+    id: row.id,
+    short_name: row.short_name ?? row.name ?? row.title ?? '',
+    dimensions_detail: row.dimensions_detail ?? row.dimensions ?? '',
+    volume_l: row.volume_l ?? null,
+    price_per_day: row.price_per_day ?? row.rent_price_per_day ?? null,
+    price_per_week: row.price_per_week ?? row.rent_price_per_week ?? null,
+    available_start: row.available_start ?? row.availability_start ?? '',
+    available_end: row.available_end ?? row.availability_end ?? '',
+    location: row.location ?? '',
+    pickup_spot: row.pickup_spot ?? '',
+    lat: row.lat ?? 0,
+    lon: row.lon ?? 0,
+    type: boardType,
+    imageUrl: primary,
+    image_url: primary,
+    delivery_available: row.delivery_available ?? false,
+    delivery_price: row.delivery_price ?? 0,
+    owner: {
+      id: row.owner_id ?? row.owner?.id ?? '',
+      name: row.owner_name ?? row.owner?.name ?? '',
+      email: '',
+      location: row.location ?? '',
+      rating: 4.5,
+      avatarUrl: row.owner_avatar_url ?? row.owner?.avatar_url ?? '',
+      avatar_url: row.owner_avatar_url ?? row.owner?.avatar_url ?? '',
+    },
+  };
+}
+
 export default function SearchScreen() {
   const insets = useSafeAreaInsets();
   const { addToCart, getItemCount, cartItems } = useCart();
-  const { boards: backendBoards, isLoading: loadingBoards } = useBoardsBackend();
 
   const [searchMode, setSearchMode] = useState<'boards' | 'users'>('boards');
   const [allUsers, setAllUsers] = useState<User[]>([]);
   const [loadingUsers, setLoadingUsers] = useState(true);
-  const [usersError, setUsersError] = useState<string | null>(null);
 
   const [boards, setBoards] = useState<Board[]>([]);
   const [filtered, setFiltered] = useState<Board[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [loadingBoards, setLoadingBoards] = useState(true);
+  const [boardsError, setBoardsError] = useState<string | null>(null);
 
   const [users, setUsers] = useState<User[]>([]);
   const [filteredUsers, setFilteredUsers] = useState<User[]>([]);
@@ -91,21 +175,149 @@ export default function SearchScreen() {
     return () => clearTimeout(t);
   }, [keyword]);
 
-  // Update boards when backend data loads
   useEffect(() => {
-    console.log('Search: Backend boards update:', {
-      hasBackendBoards: !!backendBoards,
-      count: backendBoards?.length || 0,
-      isLoading: loadingBoards,
-      sample: backendBoards?.[0]?.id
-    });
-    
-    if (backendBoards && backendBoards.length > 0) {
-      console.log('✅ Search: Loaded boards from Supabase backend:', backendBoards.length);
-      setBoards(backendBoards);
-      setFiltered(backendBoards);
-    }
-  }, [backendBoards, loadingBoards]);
+    const fetchBoards = async () => {
+      setLoadingBoards(true);
+      setBoardsError(null);
+      try {
+        console.log('🔄 Fetching boards from Supabase...');
+        
+        let data: SupabaseBoard[] | null = null;
+        let error: any = null;
+        
+        ({ data, error } = await supabase
+          .from('mv_boards_with_owner_and_images')
+          .select('*')
+          .order('created_at', { ascending: false }));
+        
+        if (error || !data) {
+          console.log('⚠️ Materialized view not found, trying plain view...');
+          ({ data, error } = await supabase
+            .from('v_boards_with_owner_and_images')
+            .select('*')
+            .order('created_at', { ascending: false }));
+        }
+        
+        if (error || !data) {
+          console.log('⚠️ View not found, querying base tables...');
+          const { data: baseBoards, error: bErr } = await supabase
+            .from('boards')
+            .select('*')
+            .order('created_at', { ascending: false });
+          if (bErr) throw bErr;
+          
+          const ids = (baseBoards ?? []).map(b => b.id);
+          let imageMap: Record<string, string[]> = {};
+          if (ids.length) {
+            const { data: maps } = await supabase
+              .from('board_image_map')
+              .select('board_id, image_id')
+              .in('board_id', ids);
+            
+            const imageIds = Array.from(new Set((maps ?? []).map(m => m.image_id)));
+            const { data: images } = imageIds.length
+              ? await supabase.from('stock_images')
+                  .select('id, image_url')
+                  .in('id', imageIds)
+              : { data: [] as any[] };
+            const imgById = Object.fromEntries((images ?? []).map(i => [i.id, i.image_url]));
+            
+            (maps ?? []).forEach(m => {
+              if (!imageMap[m.board_id]) imageMap[m.board_id] = [];
+              const url = imgById[m.image_id];
+              if (url) imageMap[m.board_id].push(url);
+            });
+          }
+          
+          data = (baseBoards ?? []).map(b => ({
+            ...b,
+            image_urls: imageMap[b.id] ?? [],
+          }));
+        }
+        
+        const normalized = (data ?? []).map(coerceBoard);
+        console.log('✅ Fetched boards from Supabase:', normalized.length);
+        
+        const seedBoardsConverted: Board[] = SEED_BOARDS.map(sb => ({
+          id: sb.id,
+          short_name: sb.name,
+          dimensions_detail: sb.dimensions ?? '',
+          volume_l: sb.volume_l,
+          price_per_day: sb.rent_price_per_day,
+          price_per_week: sb.rent_price_per_week,
+          available_start: sb.availability_start,
+          available_end: sb.availability_end,
+          location: sb.location,
+          pickup_spot: 'Beach parking lot',
+          lat: 21.3099,
+          lon: -157.8581,
+          type: 'shortboard' as BoardType,
+          imageUrl: sb.image_url,
+          image_url: sb.image_url,
+          delivery_available: true,
+          delivery_price: 50,
+          owner: {
+            id: sb.owner_id,
+            name: sb.owner_name,
+            email: '',
+            location: sb.location,
+            rating: 4.5,
+            avatarUrl: sb.owner_avatar_url,
+            avatar_url: sb.owner_avatar_url,
+          },
+        }));
+        
+        const boardList = normalized && normalized.length > 0 ? normalized : seedBoardsConverted;
+        
+        if (boardList.length === 0 || normalized.length === 0) {
+          console.log('⚠️ No boards in Supabase, using local seed boards:', SEED_BOARDS.length);
+        }
+        
+        setBoards(boardList);
+        setFiltered(boardList);
+        setBoardsError(null);
+      } catch (err: any) {
+        console.error('❌ Boards fetch failed:', err?.message ?? err);
+        setBoardsError(err?.message ?? 'Failed to load boards');
+        console.log('⚠️ Using seed boards due to error');
+        
+        const seedBoardsList: Board[] = SEED_BOARDS.map(sb => ({
+          id: sb.id,
+          short_name: sb.name,
+          dimensions_detail: sb.dimensions ?? '',
+          volume_l: sb.volume_l,
+          price_per_day: sb.rent_price_per_day,
+          price_per_week: sb.rent_price_per_week,
+          available_start: sb.availability_start,
+          available_end: sb.availability_end,
+          location: sb.location,
+          pickup_spot: 'Beach parking lot',
+          lat: 21.3099,
+          lon: -157.8581,
+          type: 'shortboard' as BoardType,
+          imageUrl: sb.image_url,
+          image_url: sb.image_url,
+          delivery_available: true,
+          delivery_price: 50,
+          owner: {
+            id: sb.owner_id,
+            name: sb.owner_name,
+            email: '',
+            location: sb.location,
+            rating: 4.5,
+            avatarUrl: sb.owner_avatar_url,
+            avatar_url: sb.owner_avatar_url,
+          },
+        }));
+        
+        setBoards(seedBoardsList);
+        setFiltered(seedBoardsList);
+      } finally {
+        setLoadingBoards(false);
+      }
+    };
+    fetchBoards();
+  }, []);
 
   // Fetch users directly from Supabase
   useEffect(() => {
@@ -126,8 +338,6 @@ export default function SearchScreen() {
 
         console.log('✅ Fetched users from Supabase:', data?.length || 0);
         
-        const userList = data && data.length > 0 ? data : SEED_PRO_USERS;
-        
         if (data && data.length > 0) {
           setAllUsers(data);
           setUsers(data);
@@ -138,10 +348,8 @@ export default function SearchScreen() {
           setUsers(SEED_PRO_USERS);
           setFilteredUsers(SEED_PRO_USERS);
         }
-        setUsersError(null);
       } catch (err: any) {
         console.error('❌ Error fetching pro users:', err.message);
-        setUsersError(err.message);
         console.log('⚠️ User fetch failed, using local seed data');
         setAllUsers(SEED_PRO_USERS);
         setUsers(SEED_PRO_USERS);
@@ -592,13 +800,16 @@ export default function SearchScreen() {
             <View style={styles.emptyState}>
               <Text style={styles.emptyStateText}>No boards match your filters.</Text>
               <Text style={styles.emptyStateSubtext}>Total boards loaded: {boards.length}</Text>
-              <Text style={styles.emptyStateSubtext}>Source: Supabase Database</Text>
+              <Text style={styles.emptyStateSubtext}>
+                Source: {boards.length > 0 && boards[0]?.id?.startsWith('seed-') ? 'Local Seed Data' : 'Supabase Database'}
+              </Text>
+              {boardsError && <Text style={styles.emptyStateSubtext}>Error: {boardsError}</Text>}
             </View>
           ) : (
             <>
               <View style={{ padding: 16, backgroundColor: '#f0f0f0' }}>
                 <Text style={{ fontSize: 14, color: '#666' }}>
-                  Showing {filtered.length} of {boards.length} boards from Supabase
+                  Showing {filtered.length} of {boards.length} boards from {boards.length > 0 && boards[0]?.id?.startsWith('seed-') ? 'Local Seed' : 'Supabase'}
                 </Text>
               </View>
               <FlatList
