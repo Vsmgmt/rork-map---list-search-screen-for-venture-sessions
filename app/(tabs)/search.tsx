@@ -20,6 +20,7 @@ import { useCart } from '@/src/context/cart';
 import { useBoardsBackend } from '@/src/context/boards-backend';
 import { Board, BoardType } from '@/src/types/board';
 import { trpc } from '@/lib/trpc';
+import { SEED_PRO_USERS } from '@/src/data/seed-pro-users';
 
 interface User {
   id: string;
@@ -57,7 +58,11 @@ export default function SearchScreen() {
   const { boards: backendBoards, isLoading: loadingBoards } = useBoardsBackend();
 
   const [searchMode, setSearchMode] = useState<'boards' | 'users'>('boards');
-  const { data: allUsers, isLoading: loadingUsers } = trpc.admin.getAllUsers.useQuery();
+  const { 
+    data: allUsers, 
+    isLoading: loadingUsers,
+    error: usersError 
+  } = trpc.admin.getAllUsers.useQuery();
 
   const [boards, setBoards] = useState<Board[]>([]);
   const [filtered, setFiltered] = useState<Board[]>([]);
@@ -103,23 +108,27 @@ export default function SearchScreen() {
     }
   }, [backendBoards, loadingBoards]);
 
-  // Update users when data loads
+  // Update users when data loads (with fallback to seed data)
   useEffect(() => {
     console.log('Search: allUsers changed:', { 
       hasData: !!allUsers, 
       length: allUsers?.length,
       isLoading: loadingUsers,
+      hasError: !!usersError,
       sample: allUsers?.[0]
     });
     
+    const userList = allUsers && allUsers.length > 0 ? allUsers : SEED_PRO_USERS;
+    
     if (allUsers && allUsers.length > 0) {
-      console.log('Search: Loaded users from backend:', allUsers.length);
-      setUsers(allUsers);
-      setFilteredUsers(allUsers);
-    } else if (allUsers) {
-      console.log('Search: allUsers is empty array');
+      console.log('✅ Search: Loaded users from Supabase:', allUsers.length);
+    } else {
+      console.log('⚠️ Search: Using local seed users:', SEED_PRO_USERS.length);
     }
-  }, [allUsers, loadingUsers]);
+    
+    setUsers(userList);
+    setFilteredUsers(userList);
+  }, [allUsers, loadingUsers, usersError]);
 
   // Live search (client-side) for users
   const performUserSearch = useCallback(() => {
@@ -591,18 +600,28 @@ export default function SearchScreen() {
               <Text style={styles.emptyStateSubtext}>
                 Total users loaded: {users.length}
               </Text>
+              <Text style={styles.emptyStateSubtext}>
+                Source: {allUsers && allUsers.length > 0 ? 'Supabase Database' : 'Local Seed Data'}
+              </Text>
               {loadingUsers && <Text style={styles.emptyStateSubtext}>Loading...</Text>}
             </View>
           ) : (
-            <FlatList
-              data={filteredUsers}
-              renderItem={renderUserCard}
-              keyExtractor={(item) => item.id}
-              key={Platform.OS === 'web' ? 'web-4-cols-users' : 'mobile-2-cols-users'}
-              numColumns={Platform.OS === 'web' ? 4 : 2}
-              columnWrapperStyle={Platform.OS === 'web' ? styles.cardRow : styles.cardRowMobile}
-              contentContainerStyle={styles.listContent}
-            />
+            <>
+              <View style={{ padding: 16, backgroundColor: '#f0f0f0' }}>
+                <Text style={{ fontSize: 14, color: '#666' }}>
+                  Showing {filteredUsers.length} of {users.length} users from {allUsers && allUsers.length > 0 ? 'Supabase' : 'Local Seed'}
+                </Text>
+              </View>
+              <FlatList
+                data={filteredUsers}
+                renderItem={renderUserCard}
+                keyExtractor={(item) => item.id}
+                key={Platform.OS === 'web' ? 'web-4-cols-users' : 'mobile-2-cols-users'}
+                numColumns={Platform.OS === 'web' ? 4 : 2}
+                columnWrapperStyle={Platform.OS === 'web' ? styles.cardRow : styles.cardRowMobile}
+                contentContainerStyle={styles.listContent}
+              />
+            </>
           )
         )}
       </View>
