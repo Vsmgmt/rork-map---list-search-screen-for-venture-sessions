@@ -87,7 +87,7 @@ class SupabaseDatabase {
     }
 
     const { data, error, count } = await query
-      .order('created_at', { ascending: false })
+      .order('short_name', { ascending: true })
       .limit(1000);
     
     console.log('🏄 Supabase getBoards query result:', {
