@@ -418,7 +418,7 @@ If any field is not visible or unclear, write "NOT_VISIBLE" for that field.`,
       console.log('Board updated successfully:', data);
       
       Alert.alert('Success', 'Board updated successfully', [
-        { text: 'OK', onPress: () => router.back() }
+        { text: 'OK', onPress: () => router.push({ pathname: '/board-preview', params: { boardId: boardId } }) }
       ]);
     } catch (error: any) {
       console.error('Failed to update board:', error);
