@@ -335,6 +335,13 @@ If any field is not visible or unclear, write "NOT_VISIBLE" for that field.`,
     
     setSaving(true);
     
+    const { data: sessionCheck } = await supabase.auth.getSession();
+    console.log('[handleSave] Auth check:', {
+      hasSession: !!sessionCheck.session,
+      userId: sessionCheck.session?.user?.id || 'none',
+      role: sessionCheck.session ? 'authenticated' : 'anon'
+    });
+    
     try {
       let uploadedImageUrl = imageUrl;
       
