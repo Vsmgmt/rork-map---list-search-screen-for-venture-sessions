@@ -13,7 +13,7 @@ import {
 import DatePicker from '@/components/DatePicker';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLocalSearchParams, router } from 'expo-router';
-import { X, MapPin, Calendar, DollarSign, Ruler, Droplets, ShoppingCart, Check, Truck, Star, MessageCircle } from 'lucide-react-native';
+import { X, MapPin, Calendar, DollarSign, Ruler, Droplets, ShoppingCart, Check, Truck, Star, MessageCircle, Edit3 } from 'lucide-react-native';
 import { useCart } from '@/src/context/cart';
 import { boardQueries } from '@/lib/queries';
 import { useMessages } from '@/src/context/messages';
@@ -255,7 +255,12 @@ export default function BoardPreviewModal() {
           <X size={24} color="#333" />
         </Pressable>
         <Text style={styles.headerTitle}>Board Details</Text>
-        <View style={styles.headerSpacer} />
+        <Pressable 
+          style={styles.editButton} 
+          onPress={() => router.push({ pathname: '/board-edit', params: { boardId: board.id } })}
+        >
+          <Edit3 size={20} color={Colors.light.tint} />
+        </Pressable>
       </View>
       
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
@@ -549,6 +554,11 @@ const styles = StyleSheet.create({
   },
   headerSpacer: {
     width: 40,
+  },
+  editButton: {
+    padding: 8,
+    borderRadius: 20,
+    backgroundColor: '#f0f0f0',
   },
   errorContainer: {
     flex: 1,
