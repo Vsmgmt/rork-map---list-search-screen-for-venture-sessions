@@ -19,6 +19,10 @@ export async function uploadBoardImage(
   console.log('[uploadBoardImage] Starting upload for board:', boardId);
   console.log('[uploadBoardImage] Input:', { hasFile: !!input.file, hasUri: !!input.uri, ext });
   
+  const { data: sessionData } = await supabase.auth.getSession();
+  console.log('[uploadBoardImage] Auth role:', sessionData.session ? 'authenticated' : 'anon');
+  console.log('[uploadBoardImage] User ID:', sessionData.session?.user?.id || 'none');
+  
   const blob = await toBlob(input);
   console.log('[uploadBoardImage] Blob created:', { type: blob.type, size: blob.size });
   
