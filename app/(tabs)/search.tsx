@@ -89,12 +89,19 @@ export default function SearchScreen() {
 
   // Update boards when backend data loads
   useEffect(() => {
+    console.log('Search: Backend boards update:', {
+      hasBackendBoards: !!backendBoards,
+      count: backendBoards?.length || 0,
+      isLoading: loadingBoards,
+      sample: backendBoards?.[0]?.id
+    });
+    
     if (backendBoards && backendBoards.length > 0) {
-      console.log('Search: Loaded boards from backend:', backendBoards.length);
+      console.log('✅ Search: Loaded boards from Supabase backend:', backendBoards.length);
       setBoards(backendBoards);
       setFiltered(backendBoards);
     }
-  }, [backendBoards]);
+  }, [backendBoards, loadingBoards]);
 
   // Update users when data loads
   useEffect(() => {
@@ -554,22 +561,31 @@ export default function SearchScreen() {
           filtered.length === 0 ? (
             <View style={styles.emptyState}>
               <Text style={styles.emptyStateText}>No boards match your filters.</Text>
+              <Text style={styles.emptyStateSubtext}>Total boards loaded: {boards.length}</Text>
+              <Text style={styles.emptyStateSubtext}>Source: Supabase Database</Text>
             </View>
           ) : (
-            <FlatList
-              ref={listRef}
-              data={filtered}
-              renderItem={renderBoardCard}
-              keyExtractor={(item) => item.id}
-              key={Platform.OS === 'web' ? 'web-4-cols' : 'mobile-2-cols'}
-              numColumns={Platform.OS === 'web' ? 4 : 2}
-              columnWrapperStyle={Platform.OS === 'web' ? styles.cardRow : styles.cardRowMobile}
-              contentContainerStyle={styles.listContent}
-              onScrollToIndexFailed={(info) => {
-                const target = Math.min(info.index, filtered.length - 1);
-                setTimeout(() => listRef.current?.scrollToIndex({ index: target, viewPosition: 0.5 }), 50);
-              }}
-            />
+            <>
+              <View style={{ padding: 16, backgroundColor: '#f0f0f0' }}>
+                <Text style={{ fontSize: 14, color: '#666' }}>
+                  Showing {filtered.length} of {boards.length} boards from Supabase
+                </Text>
+              </View>
+              <FlatList
+                ref={listRef}
+                data={filtered}
+                renderItem={renderBoardCard}
+                keyExtractor={(item) => item.id}
+                key={Platform.OS === 'web' ? 'web-4-cols' : 'mobile-2-cols'}
+                numColumns={Platform.OS === 'web' ? 4 : 2}
+                columnWrapperStyle={Platform.OS === 'web' ? styles.cardRow : styles.cardRowMobile}
+                contentContainerStyle={styles.listContent}
+                onScrollToIndexFailed={(info) => {
+                  const target = Math.min(info.index, filtered.length - 1);
+                  setTimeout(() => listRef.current?.scrollToIndex({ index: target, viewPosition: 0.5 }), 50);
+                }}
+              />
+            </>
           )
         ) : (
           filteredUsers.length === 0 ? (
