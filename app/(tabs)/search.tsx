@@ -22,6 +22,46 @@ import { supabase } from '@/lib/supabase';
 import { SEED_PRO_USERS } from '@/src/data/seed-pro-users';
 import { SEED_BOARDS } from '@/src/data/seed-boards';
 
+function formatLocation(location: string): string {
+  const parts = location.split(',').map(p => p.trim());
+  
+  if (parts.length === 0) return location;
+  
+  // Remove any zip codes (5 digits or 5-4 format)
+  const filteredParts = parts.filter(part => {
+    const cleaned = part.replace(/[^0-9]/g, '');
+    return !(cleaned.length === 5 || cleaned.length === 9);
+  });
+  
+  if (filteredParts.length === 0) return location;
+  
+  // Format as: City, State, Country (abbreviated)
+  if (filteredParts.length >= 3) {
+    const city = filteredParts[filteredParts.length - 3];
+    const state = filteredParts[filteredParts.length - 2];
+    const country = filteredParts[filteredParts.length - 1];
+    
+    // Abbreviate country to 2 letters if longer
+    const countryAbbr = country.length > 3 
+      ? country.substring(0, 2).toUpperCase() 
+      : country.toUpperCase();
+    
+    return `${city}, ${state}, ${countryAbbr}`;
+  }
+  
+  // Format as: City, Country (abbreviated)
+  if (filteredParts.length === 2) {
+    const city = filteredParts[0];
+    const country = filteredParts[1];
+    const countryAbbr = country.length > 3 
+      ? country.substring(0, 2).toUpperCase() 
+      : country.toUpperCase();
+    return `${city}, ${countryAbbr}`;
+  }
+  
+  return filteredParts[0];
+}
+
 interface User {
   id: string;
   name: string;
@@ -539,7 +579,7 @@ export default function SearchScreen() {
         )}
 
         <View style={styles.locationRow}>
-          <Text style={styles.cardLocation}>{item.location}</Text>
+          <Text style={styles.cardLocation} numberOfLines={1}>{formatLocation(item.location)}</Text>
           <View style={styles.locationIcons}>
             {item.delivery_available && (
               <View style={styles.deliveryIcon}>
@@ -611,7 +651,7 @@ export default function SearchScreen() {
         )}
 
         <View style={styles.locationRow}>
-          <Text style={styles.cardLocation}>{item.location}</Text>
+          <Text style={styles.cardLocation} numberOfLines={1}>{formatLocation(item.location)}</Text>
         </View>
 
         <Pressable

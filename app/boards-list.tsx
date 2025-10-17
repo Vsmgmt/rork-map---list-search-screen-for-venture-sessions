@@ -21,12 +21,44 @@ import { useBoards } from '@/src/context/boards';
 
 import { Board, BoardType } from '@/src/types/board';
 
-function extractCityState(location: string): string {
+function formatLocation(location: string): string {
   const parts = location.split(',').map(p => p.trim());
-  if (parts.length >= 2) {
-    return `${parts[parts.length - 2]}, ${parts[parts.length - 1]}`;
+  
+  if (parts.length === 0) return location;
+  
+  // Remove any zip codes (5 digits or 5-4 format)
+  const filteredParts = parts.filter(part => {
+    const cleaned = part.replace(/[^0-9]/g, '');
+    return !(cleaned.length === 5 || cleaned.length === 9);
+  });
+  
+  if (filteredParts.length === 0) return location;
+  
+  // Format as: City, State, Country (abbreviated)
+  if (filteredParts.length >= 3) {
+    const city = filteredParts[filteredParts.length - 3];
+    const state = filteredParts[filteredParts.length - 2];
+    const country = filteredParts[filteredParts.length - 1];
+    
+    // Abbreviate country to 2 letters if longer
+    const countryAbbr = country.length > 3 
+      ? country.substring(0, 2).toUpperCase() 
+      : country.toUpperCase();
+    
+    return `${city}, ${state}, ${countryAbbr}`;
   }
-  return location;
+  
+  // Format as: City, Country (abbreviated)
+  if (filteredParts.length === 2) {
+    const city = filteredParts[0];
+    const country = filteredParts[1];
+    const countryAbbr = country.length > 3 
+      ? country.substring(0, 2).toUpperCase() 
+      : country.toUpperCase();
+    return `${city}, ${countryAbbr}`;
+  }
+  
+  return filteredParts[0];
 }
 
 export default function BoardsListScreen() {
@@ -205,7 +237,7 @@ export default function BoardsListScreen() {
           {item.price_per_day ? `${item.price_per_day}/day • ${item.price_per_week}/week` : 'Price TBD'}
         </Text>
         <View style={styles.locationRow}>
-          <Text style={styles.cardLocation} numberOfLines={1}>{extractCityState(item.location)}</Text>
+          <Text style={styles.cardLocation} numberOfLines={1}>{formatLocation(item.location)}</Text>
           <View style={styles.locationIcons}>
             {item.delivery_available && (
               <View style={styles.deliveryIcon}>
