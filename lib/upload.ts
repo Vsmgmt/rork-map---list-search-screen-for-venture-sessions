@@ -23,8 +23,9 @@ export async function uploadBoardImage(
   console.log('[uploadBoardImage] Blob created:', { type: blob.type, size: blob.size });
   
   const normalizedExt = ext === 'jpeg' ? 'jpg' : ext;
-  const path = `boards/${boardId}.${normalizedExt}`;
-  const contentType = `image/${normalizedExt}`;
+  const filename = `${Date.now()}.${normalizedExt}`;
+  const path = `boards/${boardId}/${filename}`;
+  const contentType = normalizedExt === 'jpg' ? 'image/jpeg' : `image/${normalizedExt}`;
   
   console.log('[uploadBoardImage] Uploading to path:', path);
   console.log('[uploadBoardImage] Content type:', contentType);
