@@ -339,10 +339,23 @@ If any field is not visible or unclear, write "NOT_VISIBLE" for that field.`,
       let uploadedImageUrl = imageUrl;
       
       if (localImageUri && boardId) {
-        console.log('Uploading new image to Supabase Storage...');
+        console.log('[handleSave] Uploading new image to Supabase Storage...');
+        console.log('[handleSave] Local image URI:', localImageUri);
         
         try {
-          const ext = localImageUri.split('.').pop() || 'jpg';
+          let ext = 'jpg';
+          const uriLower = localImageUri.toLowerCase();
+          
+          if (uriLower.includes('.png')) {
+            ext = 'png';
+          } else if (uriLower.includes('.jpeg') || uriLower.includes('.jpg')) {
+            ext = 'jpg';
+          } else if (uriLower.includes('.webp')) {
+            ext = 'webp';
+          }
+          
+          console.log('[handleSave] Detected extension:', ext);
+          
           const { publicUrl } = await uploadBoardImage(
             boardId,
             { uri: localImageUri },
@@ -350,12 +363,14 @@ If any field is not visible or unclear, write "NOT_VISIBLE" for that field.`,
           );
           
           uploadedImageUrl = publicUrl;
-          console.log('Image uploaded successfully:', publicUrl);
+          console.log('[handleSave] Image uploaded successfully:', publicUrl);
         } catch (uploadError: any) {
-          console.error('Image upload failed:', uploadError);
+          console.error('[handleSave] Image upload failed:', uploadError);
+          console.error('[handleSave] Error details:', JSON.stringify(uploadError, null, 2));
+          
           Alert.alert(
             'Image Upload Failed',
-            'Failed to upload image. Continue saving without new image?',
+            `Failed to upload image: ${uploadError.message || 'Unknown error'}. Continue saving without new image?`,
             [
               { text: 'Cancel', style: 'cancel', onPress: () => { setSaving(false); } },
               { text: 'Continue', onPress: () => {} }
