@@ -19,9 +19,19 @@ export async function uploadBoardImage(
   console.log('[uploadBoardImage] Starting upload for board:', boardId);
   console.log('[uploadBoardImage] Input:', { hasFile: !!input.file, hasUri: !!input.uri, ext });
   
-  const { data: sessionData } = await supabase.auth.getSession();
-  console.log('[uploadBoardImage] Auth role:', sessionData.session ? 'authenticated' : 'anon');
+  const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+  if (sessionError) {
+    console.error('[uploadBoardImage] Session check error:', sessionError);
+  }
+  
+  const isAuthenticated = !!sessionData.session;
+  console.log('[uploadBoardImage] Auth role:', isAuthenticated ? 'authenticated' : 'anon');
   console.log('[uploadBoardImage] User ID:', sessionData.session?.user?.id || 'none');
+  
+  if (!isAuthenticated) {
+    console.error('[uploadBoardImage] User not authenticated!');
+    throw new Error('Authentication required: Please log in to upload images');
+  }
   
   const blob = await toBlob(input);
   console.log('[uploadBoardImage] Blob created:', { type: blob.type, size: blob.size });
@@ -45,7 +55,19 @@ export async function uploadBoardImage(
 
   if (upErr) {
     console.error('[uploadBoardImage] Upload error:', upErr);
-    throw new Error(`Failed to upload image: ${upErr.message}`);
+    console.error('[uploadBoardImage] Error details:', JSON.stringify(upErr, null, 2));
+    
+    let errorMessage = upErr.message || 'Unknown error';
+    
+    if (upErr.message?.includes('row-level security')) {
+      errorMessage = 'Permission denied: RLS policy blocking upload. Check storage bucket policies.';
+    } else if ('statusCode' in upErr && upErr.statusCode === '401') {
+      errorMessage = 'Unauthorized: Please log in to upload images.';
+    } else if ('statusCode' in upErr && upErr.statusCode === '403') {
+      errorMessage = 'Forbidden: You do not have permission to upload images.';
+    }
+    
+    throw new Error(errorMessage);
   }
   
   console.log('[uploadBoardImage] Upload successful:', uploadData);
