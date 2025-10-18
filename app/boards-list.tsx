@@ -15,9 +15,9 @@ import {
 import DatePicker from '@/components/DatePicker';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ShoppingCart, Truck, Info, X, ArrowLeft } from 'lucide-react-native';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useCart } from '@/src/context/cart';
-import { useBoards } from '@/src/context/boards';
+import { useBoardsBackend } from '@/src/context/boards-backend';
 
 import { Board, BoardType } from '@/src/types/board';
 
@@ -63,9 +63,10 @@ function formatLocation(location: string): string {
 
 export default function BoardsListScreen() {
   const insets = useSafeAreaInsets();
+  const { ownerId, ownerName } = useLocalSearchParams<{ ownerId?: string; ownerName?: string }>();
   const { addToCart, getItemCount, cartItems } = useCart();
-  const { boards } = useBoards();
-  const [filtered, setFiltered] = useState<Board[]>(boards.slice(0, 50));
+  const { boards } = useBoardsBackend();
+  const [filtered, setFiltered] = useState<Board[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   
@@ -98,7 +99,9 @@ export default function BoardsListScreen() {
     
     // Simulate loading for UX
     setTimeout(() => {
-      let results = [...boards.slice(0, 50)];
+      let results = ownerId 
+        ? boards.filter(b => b.owner?.id === ownerId)
+        : boards.slice(0, 50);
       
       // Date filter
       if (startDate && endDate) {
@@ -141,19 +144,22 @@ export default function BoardsListScreen() {
       setFiltered(results);
       setLoading(false);
     }, 150);
-  }, [boards, startDate, endDate, location, debouncedKeyword, selectedBoardType]);
+  }, [boards, startDate, endDate, location, debouncedKeyword, selectedBoardType, ownerId]);
 
   // Auto-search when any filter changes
   useEffect(() => {
     performSearch();
   }, [performSearch]);
 
-  // Update filtered results when boards change initially - limit to 50
+  // Update filtered results when boards change initially
   useEffect(() => {
     if (boards.length > 0 && filtered.length === 0) {
-      setFiltered(boards.slice(0, 50));
+      const initialBoards = ownerId 
+        ? boards.filter(b => b.owner?.id === ownerId)
+        : boards.slice(0, 50);
+      setFiltered(initialBoards);
     }
-  }, [boards]);
+  }, [boards, ownerId, filtered.length]);
   
   const boardTypes: { value: BoardType | ''; label: string }[] = [
     { value: '', label: 'All Board Types' },
@@ -285,7 +291,7 @@ export default function BoardsListScreen() {
           >
             <ArrowLeft size={24} color="#007AFF" />
           </Pressable>
-          <Text style={styles.headerTitle}>All Boards (50)</Text>
+          <Text style={styles.headerTitle}>{ownerName ? `${ownerName}'s Boards` : 'All Boards (50)'}</Text>
         </View>
         <View style={styles.headerActions}>
           <Pressable 

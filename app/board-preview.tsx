@@ -20,6 +20,7 @@ import { useMessages } from '@/src/context/messages';
 import { useUser } from '@/src/context/user';
 import { useBoardsBackend } from '@/src/context/boards-backend';
 import { useBoards } from '@/src/context/boards';
+import { Board } from '@/src/types/board';
 import Colors from '@/constants/colors';
 
 export default function BoardPreviewModal() {
@@ -28,7 +29,7 @@ export default function BoardPreviewModal() {
   const { addToCart, cartItems } = useCart();
   const { createConversation } = useMessages();
   const { currentUser } = useUser();
-  const { getBoardById: getBackendBoard } = useBoardsBackend();
+  const { getBoardById: getBackendBoard, boards: backendBoards } = useBoardsBackend();
   const { getBoardById: getLocalBoard } = useBoards();
   
   const [startDate, setStartDate] = useState('');
@@ -37,6 +38,7 @@ export default function BoardPreviewModal() {
   const [deliverySelected, setDeliverySelected] = useState(false);
   const [board, setBoard] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [ownerBoards, setOwnerBoards] = useState<Board[]>([]);
   
   useEffect(() => {
     if (!boardId) {
@@ -68,13 +70,22 @@ export default function BoardPreviewModal() {
         
         console.log('Final board data:', data);
         setBoard(data);
+        
+        // Fetch other boards from the same owner
+        if (data?.owner?.id && backendBoards && backendBoards.length > 0) {
+          const otherOwnerBoards = backendBoards.filter(
+            b => b.owner?.id === data.owner.id && b.id !== data.id
+          );
+          setOwnerBoards(otherOwnerBoards.slice(0, 3));
+          console.log('Other boards from owner:', otherOwnerBoards.length);
+        }
       } catch (error) {
         console.error('Failed to fetch board:', error);
       } finally {
         setLoading(false);
       }
     })();
-  }, [boardId, getBackendBoard, getLocalBoard]);
+  }, [boardId, getBackendBoard, getLocalBoard, backendBoards]);
 
   if (loading) {
     return (
@@ -402,6 +413,50 @@ export default function BoardPreviewModal() {
                   <Text style={styles.messageOwnerText}>Message Owner</Text>
                 </Pressable>
               </View>
+              
+              {ownerBoards.length > 0 && (
+                <View style={styles.ownerBoardsSection}>
+                  <View style={styles.ownerBoardsHeader}>
+                    <Text style={styles.ownerBoardsTitle}>More from {board.owner.name}</Text>
+                    <Pressable
+                      style={styles.viewAllOwnerBoardsButton}
+                      onPress={() => router.push({
+                        pathname: '/boards-list',
+                        params: { ownerId: board.owner.id, ownerName: board.owner.name }
+                      })}
+                    >
+                      <Text style={styles.viewAllOwnerBoardsText}>View All</Text>
+                    </Pressable>
+                  </View>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.ownerBoardsScroll}>
+                    {ownerBoards.map((ownerBoard) => (
+                      <Pressable
+                        key={ownerBoard.id}
+                        style={styles.ownerBoardCard}
+                        onPress={() => {
+                          router.back();
+                          setTimeout(() => {
+                            router.push(`/board-preview?boardId=${ownerBoard.id}`);
+                          }, 100);
+                        }}
+                      >
+                        <View style={styles.ownerBoardThumbnail}>
+                          <Image
+                            source={{ uri: ownerBoard.image_url || ownerBoard.imageUrl }}
+                            style={styles.ownerBoardImage}
+                            resizeMode="contain"
+                          />
+                        </View>
+                        <Text style={styles.ownerBoardName} numberOfLines={1}>{ownerBoard.short_name}</Text>
+                        <Text style={styles.ownerBoardDims} numberOfLines={1}>{ownerBoard.dimensions_detail}</Text>
+                        {ownerBoard.price_per_day && (
+                          <Text style={styles.ownerBoardPrice}>${ownerBoard.price_per_day}/day</Text>
+                        )}
+                      </Pressable>
+                    ))}
+                  </ScrollView>
+                </View>
+              )}
             </View>
           )}
           
@@ -1017,5 +1072,73 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: 14,
     fontWeight: '500' as const,
+  },
+  ownerBoardsSection: {
+    marginTop: 16,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: '#f0f0f0',
+  },
+  ownerBoardsHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  ownerBoardsTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333',
+  },
+  viewAllOwnerBoardsButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 12,
+    backgroundColor: Colors.light.tint,
+  },
+  viewAllOwnerBoardsText: {
+    color: 'white',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  ownerBoardsScroll: {
+    marginLeft: -16,
+    marginRight: -16,
+    paddingLeft: 16,
+  },
+  ownerBoardCard: {
+    width: 140,
+    marginRight: 12,
+    backgroundColor: '#f8f9fa',
+    borderRadius: 8,
+    padding: 8,
+  },
+  ownerBoardThumbnail: {
+    width: '100%',
+    height: 120,
+    backgroundColor: '#fff',
+    borderRadius: 6,
+    marginBottom: 8,
+    overflow: 'hidden',
+  },
+  ownerBoardImage: {
+    width: '100%',
+    height: '100%',
+  },
+  ownerBoardName: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 2,
+  },
+  ownerBoardDims: {
+    fontSize: 12,
+    color: '#666',
+    marginBottom: 4,
+  },
+  ownerBoardPrice: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#4CAF50',
   },
 });
