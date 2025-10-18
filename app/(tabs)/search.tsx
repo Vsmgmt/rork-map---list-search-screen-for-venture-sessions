@@ -701,6 +701,13 @@ export default function SearchScreen() {
           <Pressable style={styles.infoButton} onPress={() => setShowInfoBubble(true)}>
             <Info size={24} color="#007AFF" />
           </Pressable>
+        </View>
+      </View>
+
+      {/* Filters */}
+      {searchMode === 'boards' && (
+        <View style={styles.filterBar}>
+        <View style={styles.filterRowWithCart}>
           <Pressable style={styles.cartBadge} onPress={() => router.push('/(tabs)/cart')}>
             <ShoppingCart size={24} color="#333" />
             {getItemCount() > 0 && (
@@ -710,11 +717,6 @@ export default function SearchScreen() {
             )}
           </Pressable>
         </View>
-      </View>
-
-      {/* Filters */}
-      {searchMode === 'boards' && (
-        <View style={styles.filterBar}>
         <View style={styles.filterRow}>
           <DatePicker value={startDate} onDateChange={setStartDate} placeholder="Start Date" />
           <DatePicker value={endDate} onDateChange={setEndDate} placeholder="End Date" />
@@ -963,6 +965,12 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderBottomWidth: 1,
     borderBottomColor: '#e0e0e0',
+  },
+  filterRowWithCart: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    alignItems: 'center',
+    marginBottom: 8,
   },
   filterRow: {
     flexDirection: 'row',
