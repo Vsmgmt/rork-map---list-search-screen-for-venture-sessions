@@ -33,10 +33,10 @@ function TabIcon({ color, children, badgeCount }: { color: string; children: Rea
   return (
     <View style={styles.tabIconContainer}>
       {children}
-      {badgeCount !== undefined && badgeCount > 0 && (
+      {typeof badgeCount === 'number' && badgeCount > 0 && (
         <View style={styles.badge}>
           <Text style={styles.badgeText}>
-            {badgeCount > 99 ? '99+' : String(badgeCount)}
+            {badgeCount > 99 ? '99+' : badgeCount.toString()}
           </Text>
         </View>
       )}
