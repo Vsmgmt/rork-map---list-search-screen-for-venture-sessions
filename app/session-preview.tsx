@@ -7,6 +7,7 @@ import {
   Pressable,
   Image,
   ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLocalSearchParams, router } from 'expo-router';
@@ -14,6 +15,7 @@ import { X, MapPin, Clock, Users, Star, Award, CheckCircle } from 'lucide-react-
 import { useSessions } from '@/src/context/sessions';
 import { Session } from '@/src/types/session';
 import Colors from '@/constants/colors';
+import DatePicker, { TimePicker } from '@/components/DatePicker';
 
 export default function SessionPreviewModal() {
   const insets = useSafeAreaInsets();
@@ -22,6 +24,11 @@ export default function SessionPreviewModal() {
   
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  
+  const [bookingDate, setBookingDate] = useState<string>('');
+  const [bookingTime, setBookingTime] = useState<string>('');
+  const [endDate, setEndDate] = useState<string>('');
+  const [participants, setParticipants] = useState<number>(1);
   
   useEffect(() => {
     if (!sessionId) {
@@ -100,6 +107,54 @@ export default function SessionPreviewModal() {
       return `${duration} days`;
     }
     return `${duration} minutes`;
+  };
+
+  const calculateDuration = (start: string, end: string): number => {
+    if (!start || !end) return 0;
+    const startDate = new Date(start);
+    const endDate = new Date(end);
+    const diffTime = Math.abs(endDate.getTime() - startDate.getTime());
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return diffDays;
+  };
+
+  const handleBookNow = () => {
+    if (!bookingDate) {
+      Alert.alert('Missing Information', 'Please select a date.');
+      return;
+    }
+
+    if (session?.type === 'camp' && !endDate) {
+      Alert.alert('Missing Information', 'Please select an end date for the camp.');
+      return;
+    }
+
+    if (session?.type !== 'camp' && !bookingTime) {
+      Alert.alert('Missing Information', 'Please select a time.');
+      return;
+    }
+
+    console.log('Booking session:', {
+      sessionId: session?.id,
+      sessionName: session?.name,
+      type: session?.type,
+      date: bookingDate,
+      time: session?.type !== 'camp' ? bookingTime : undefined,
+      endDate: session?.type === 'camp' ? endDate : undefined,
+      participants,
+      totalPrice: session ? session.price * participants : 0,
+    });
+
+    Alert.alert(
+      'Booking Confirmed!',
+      `Your ${session?.type} has been booked for ${bookingDate}${session?.type !== 'camp' ? ` at ${bookingTime}` : ` to ${endDate}`} for ${participants} ${participants === 1 ? 'person' : 'people'}.`,
+      [
+        {
+          text: 'OK',
+          onPress: () => router.back(),
+        },
+      ]
+    );
   };
 
   return (
@@ -206,8 +261,107 @@ export default function SessionPreviewModal() {
           </Text>
         </View>
 
-        <Pressable style={styles.bookButton}>
-          <Text style={styles.bookButtonText}>Book Now</Text>
+        <View style={styles.bookingSection}>
+          <Text style={styles.sectionTitle}>Book This Experience</Text>
+          
+          {session.type === 'camp' ? (
+            <>
+              <View style={styles.dateRow}>
+                <View style={styles.dateColumn}>
+                  <Text style={styles.inputLabel}>Start Date</Text>
+                  <DatePicker
+                    value={bookingDate}
+                    onDateChange={setBookingDate}
+                    placeholder="Select start date"
+                    style={styles.dateInput}
+                  />
+                </View>
+                <View style={styles.dateColumn}>
+                  <Text style={styles.inputLabel}>End Date</Text>
+                  <DatePicker
+                    value={endDate}
+                    onDateChange={setEndDate}
+                    placeholder="Select end date"
+                    style={styles.dateInput}
+                  />
+                </View>
+              </View>
+              {bookingDate && endDate && (
+                <Text style={styles.durationText}>
+                  {calculateDuration(bookingDate, endDate)} days
+                </Text>
+              )}
+            </>
+          ) : (
+            <>
+              <View style={styles.dateRow}>
+                <View style={styles.dateColumn}>
+                  <Text style={styles.inputLabel}>Date</Text>
+                  <DatePicker
+                    value={bookingDate}
+                    onDateChange={setBookingDate}
+                    placeholder="Select date"
+                    style={styles.dateInput}
+                  />
+                </View>
+                <View style={styles.dateColumn}>
+                  <Text style={styles.inputLabel}>Time</Text>
+                  <TimePicker
+                    value={bookingTime}
+                    onTimeChange={setBookingTime}
+                    placeholder="Select time"
+                    style={styles.dateInput}
+                  />
+                </View>
+              </View>
+            </>
+          )}
+          
+          <View style={styles.participantsSection}>
+            <Text style={styles.inputLabel}>Number of Participants</Text>
+            <View style={styles.participantsControl}>
+              <Pressable
+                style={[styles.participantButton, participants <= 1 && styles.participantButtonDisabled]}
+                onPress={() => setParticipants(Math.max(1, participants - 1))}
+                disabled={participants <= 1}
+              >
+                <Text style={[styles.participantButtonText, participants <= 1 && styles.participantButtonTextDisabled]}>-</Text>
+              </Pressable>
+              <Text style={styles.participantsValue}>{participants}</Text>
+              <Pressable
+                style={[styles.participantButton, participants >= session.max_participants && styles.participantButtonDisabled]}
+                onPress={() => setParticipants(Math.min(session.max_participants, participants + 1))}
+                disabled={participants >= session.max_participants}
+              >
+                <Text style={[styles.participantButtonText, participants >= session.max_participants && styles.participantButtonTextDisabled]}>+</Text>
+              </Pressable>
+            </View>
+            <Text style={styles.participantsNote}>Max {session.max_participants} participants</Text>
+          </View>
+
+          <View style={styles.pricingSummary}>
+            <View style={styles.pricingRow}>
+              <Text style={styles.pricingLabel}>
+                ${session.price} x {participants} {participants === 1 ? 'person' : 'people'}
+              </Text>
+              <Text style={styles.pricingValue}>${(session.price * participants).toFixed(2)}</Text>
+            </View>
+            <View style={[styles.pricingRow, styles.totalRow]}>
+              <Text style={styles.totalLabel}>Total</Text>
+              <Text style={styles.totalValue}>${(session.price * participants).toFixed(2)}</Text>
+            </View>
+          </View>
+        </View>
+
+        <Pressable
+          style={[
+            styles.bookButton,
+            (!bookingDate || (session.type === 'camp' && !endDate) || (session.type !== 'camp' && !bookingTime)) && styles.bookButtonDisabled
+          ]}
+          onPress={handleBookNow}
+          disabled={!bookingDate || (session.type === 'camp' && !endDate) || (session.type !== 'camp' && !bookingTime)}
+        >
+          <Text style={styles.bookButtonText}>Book Now - ${(session.price * participants).toFixed(2)}</Text>
         </Pressable>
 
         <View style={{ height: insets.bottom + 20 }} />
@@ -436,5 +590,114 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#666',
     textAlign: 'center',
+  },
+  bookingSection: {
+    marginBottom: 24,
+    padding: 16,
+    backgroundColor: '#f9f9f9',
+    borderRadius: 12,
+  },
+  dateRow: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 16,
+  },
+  dateColumn: {
+    flex: 1,
+  },
+  inputLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 8,
+  },
+  dateInput: {
+    flex: 1,
+  },
+  durationText: {
+    fontSize: 14,
+    color: '#007AFF',
+    fontWeight: '600',
+    marginBottom: 12,
+  },
+  participantsSection: {
+    marginBottom: 16,
+  },
+  participantsControl: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 20,
+    marginBottom: 8,
+  },
+  participantButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#007AFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  participantButtonDisabled: {
+    backgroundColor: '#ccc',
+  },
+  participantButtonText: {
+    fontSize: 24,
+    fontWeight: '600',
+    color: 'white',
+  },
+  participantButtonTextDisabled: {
+    color: '#999',
+  },
+  participantsValue: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: '#333',
+    minWidth: 40,
+    textAlign: 'center',
+  },
+  participantsNote: {
+    fontSize: 12,
+    color: '#666',
+    textAlign: 'center',
+  },
+  pricingSummary: {
+    borderTopWidth: 1,
+    borderTopColor: '#e0e0e0',
+    paddingTop: 16,
+  },
+  pricingRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  pricingLabel: {
+    fontSize: 14,
+    color: '#666',
+  },
+  pricingValue: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#333',
+  },
+  totalRow: {
+    marginTop: 8,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#e0e0e0',
+  },
+  totalLabel: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#333',
+  },
+  totalValue: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#4CAF50',
+  },
+  bookButtonDisabled: {
+    backgroundColor: '#ccc',
   },
 });

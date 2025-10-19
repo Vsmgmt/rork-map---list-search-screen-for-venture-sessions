@@ -424,6 +424,233 @@ const styles = StyleSheet.create({
   },
   selectedDayText: {
     color: 'white',
+    fontWeight: '600' as const,
+  },
+  webTimePicker: {
+    padding: 20,
+  },
+  timePickerRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 10,
+  },
+  timeColumn: {
+    maxHeight: 200,
+    overflow: 'scroll' as any,
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+    borderRadius: 8,
+  },
+  timeItem: {
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    minWidth: 60,
+    alignItems: 'center',
+  },
+  selectedTimeItem: {
+    backgroundColor: '#007AFF',
+  },
+  timeItemText: {
+    fontSize: 16,
+    color: '#333',
+  },
+  selectedTimeItemText: {
+    color: 'white',
     fontWeight: '600',
   },
-});
+  timeSeparator: {
+    fontSize: 24,
+    fontWeight: 'bold' as const,
+    color: '#333',
+  },
+} as const);
+
+export function TimePicker({ value, onTimeChange, placeholder, style }: {
+  value: string;
+  onTimeChange: (time: string) => void;
+  placeholder: string;
+  style?: any;
+}) {
+  const [showPicker, setShowPicker] = useState(false);
+  
+  const getValidDate = (timeValue: string): Date => {
+    if (!timeValue) return new Date();
+    try {
+      const [hours, minutes] = timeValue.split(':').map(Number);
+      const date = new Date();
+      date.setHours(hours || 0, minutes || 0, 0, 0);
+      if (isNaN(date.getTime())) {
+        return new Date();
+      }
+      return date;
+    } catch {
+      return new Date();
+    }
+  };
+  
+  const [selectedTime, setSelectedTime] = useState<Date>(() => getValidDate(value));
+
+  useEffect(() => {
+    if (value) {
+      const time = getValidDate(value);
+      setSelectedTime(time);
+    }
+  }, [value]);
+
+  const formatTime = (date: Date) => {
+    const hours = date.getHours().toString().padStart(2, '0');
+    const minutes = date.getMinutes().toString().padStart(2, '0');
+    return `${hours}:${minutes}`;
+  };
+
+  const formatDisplayTime = (timeString: string) => {
+    if (!timeString) return placeholder;
+    try {
+      const [hours, minutes] = timeString.split(':').map(Number);
+      const isPM = hours >= 12;
+      const displayHours = hours % 12 || 12;
+      return `${displayHours}:${minutes.toString().padStart(2, '0')} ${isPM ? 'PM' : 'AM'}`;
+    } catch {
+      return placeholder;
+    }
+  };
+
+  const handleTimeChange = (event: any, time?: Date) => {
+    if (Platform.OS === 'android') {
+      setShowPicker(false);
+    }
+    
+    if (event?.type === 'dismissed') {
+      setShowPicker(false);
+      return;
+    }
+    
+    if (time) {
+      setSelectedTime(time);
+      const formattedTime = formatTime(time);
+      onTimeChange(formattedTime);
+    }
+  };
+
+  const openPicker = () => {
+    const currentTime = value ? getValidDate(value) : new Date();
+    setSelectedTime(currentTime);
+    setShowPicker(true);
+  };
+
+  const closePicker = () => {
+    setShowPicker(false);
+  };
+
+  const handleDone = () => {
+    const formattedTime = formatTime(selectedTime);
+    onTimeChange(formattedTime);
+    closePicker();
+  };
+
+  return (
+    <>
+      <Pressable style={[styles.dateButton, style]} onPress={openPicker}>
+        <Calendar size={16} color="#666" />
+        <Text style={[styles.dateText, !value && styles.placeholderText]}>
+          {formatDisplayTime(value)}
+        </Text>
+      </Pressable>
+
+      {(Platform.OS === 'ios' || Platform.OS === 'web') ? (
+        showPicker && (
+          <Modal
+            visible={showPicker}
+            transparent={true}
+            animationType="slide"
+            onRequestClose={closePicker}
+          >
+            <Pressable style={styles.modalOverlay} onPress={closePicker}>
+              <Pressable style={styles.modalContent} onPress={(e) => e.stopPropagation()}>
+                <View style={styles.modalHeader}>
+                  <Pressable onPress={closePicker}>
+                    <Text style={styles.cancelButton}>Cancel</Text>
+                  </Pressable>
+                  <Text style={styles.modalTitle}>Select Time</Text>
+                  <Pressable onPress={handleDone}>
+                    <Text style={styles.doneButton}>Done</Text>
+                  </Pressable>
+                </View>
+                {Platform.OS === 'web' ? (
+                  <WebTimePicker
+                    selectedTime={selectedTime}
+                    onTimeSelect={setSelectedTime}
+                  />
+                ) : (
+                  <DateTimePicker
+                    value={selectedTime}
+                    mode="time"
+                    display="spinner"
+                    onChange={handleTimeChange}
+                    style={styles.iosPicker}
+                  />
+                )}
+              </Pressable>
+            </Pressable>
+          </Modal>
+        )
+      ) : (
+        showPicker && (
+          <DateTimePicker
+            value={selectedTime}
+            mode="time"
+            display="clock"
+            onChange={handleTimeChange}
+          />
+        )
+      )}
+    </>
+  );
+}
+
+function WebTimePicker({
+  selectedTime,
+  onTimeSelect,
+}: {
+  selectedTime: Date;
+  onTimeSelect: (time: Date) => void;
+}) {
+  const [hours, setHours] = useState(selectedTime.getHours());
+  const [minutes, setMinutes] = useState(selectedTime.getMinutes());
+
+  useEffect(() => {
+    const newTime = new Date();
+    newTime.setHours(hours, minutes);
+    onTimeSelect(newTime);
+  }, [hours, minutes, onTimeSelect]);
+
+  const renderTimeColumn = (max: number, current: number, onChange: (val: number) => void) => {
+    const items = Array.from({ length: max }, (_, i) => i);
+    return (
+      <View style={styles.timeColumn}>
+        {items.map((i) => (
+          <Pressable
+            key={i}
+            style={[styles.timeItem, current === i && styles.selectedTimeItem]}
+            onPress={() => onChange(i)}
+          >
+            <Text style={[styles.timeItemText, current === i && styles.selectedTimeItemText]}>
+              {i.toString().padStart(2, '0')}
+            </Text>
+          </Pressable>
+        ))}
+      </View>
+    );
+  };
+
+  return (
+    <View style={styles.webTimePicker}>
+      <View style={styles.timePickerRow}>
+        {renderTimeColumn(24, hours, setHours)}
+        <Text style={styles.timeSeparator}>:</Text>
+        {renderTimeColumn(60, minutes, setMinutes)}
+      </View>
+    </View>
+  );
+}
