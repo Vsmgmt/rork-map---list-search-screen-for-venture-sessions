@@ -434,10 +434,7 @@ export default function BoardPreviewModal() {
                         key={ownerBoard.id}
                         style={styles.ownerBoardCard}
                         onPress={() => {
-                          router.back();
-                          setTimeout(() => {
-                            router.push(`/board-preview?boardId=${ownerBoard.id}`);
-                          }, 100);
+                          router.push(`/board-preview?boardId=${ownerBoard.id}`);
                         }}
                       >
                         <View style={styles.ownerBoardThumbnail}>
