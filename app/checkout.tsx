@@ -189,8 +189,10 @@ export default function CheckoutScreen() {
                   <View style={styles.deliveryGroupDetails}>
                     <Text style={styles.deliveryGroupText}>
                       {group.items.length} board{group.items.length > 1 ? 's' : ''}
-                      {group.items.length > 1 && (
-                        <Text style={styles.discountText}> (25% off additional boards)</Text>
+                      {group.items.length <= 2 ? (
+                        <Text style={styles.discountText}> ($50 flat fee)</Text>
+                      ) : (
+                        <Text style={styles.discountText}> ($50 + ${(group.items.length - 2) * 10} for {group.items.length - 2} extra)</Text>
                       )}
                     </Text>
                     <Text style={styles.deliveryGroupPrice}>${group.totalPrice.toFixed(2)}</Text>

@@ -212,7 +212,6 @@ export const [CartProvider, useCart] = createContextHook(() => {
   }, [saveCart, cartItems]);
 
   const calculateDeliveryPricing = useCallback(() => {
-    // Group items by owner/pro for delivery discount calculation
     const deliveryItemsByOwner = cartItems
       .filter(item => item.deliverySelected)
       .reduce((groups, item) => {
@@ -226,19 +225,15 @@ export const [CartProvider, useCart] = createContextHook(() => {
 
     let totalDeliveryPrice = 0;
     
-    // Calculate delivery price for each owner group
     Object.values(deliveryItemsByOwner).forEach(ownerItems => {
       if (ownerItems.length === 0) return;
       
-      // Sort by delivery price descending to apply full price to most expensive
-      const sortedItems = [...ownerItems].sort((a, b) => b.board.delivery_price - a.board.delivery_price);
+      const count = ownerItems.length;
       
-      // First board gets full delivery price
-      totalDeliveryPrice += sortedItems[0].board.delivery_price;
-      
-      // Additional boards get 25% of delivery price
-      for (let i = 1; i < sortedItems.length; i++) {
-        totalDeliveryPrice += sortedItems[i].board.delivery_price * 0.25;
+      if (count <= 2) {
+        totalDeliveryPrice += 50;
+      } else {
+        totalDeliveryPrice += 50 + (count - 2) * 10;
       }
     });
     
@@ -270,19 +265,15 @@ export const [CartProvider, useCart] = createContextHook(() => {
         return groups;
       }, {} as Record<string, { ownerName: string; items: CartItem[]; totalPrice: number }>);
 
-    // Calculate delivery price for each owner group
     Object.values(deliveryItemsByOwner).forEach(group => {
       if (group.items.length === 0) return;
       
-      // Sort by delivery price descending
-      const sortedItems = [...group.items].sort((a, b) => b.board.delivery_price - a.board.delivery_price);
+      const count = group.items.length;
       
-      // First board gets full delivery price
-      group.totalPrice += sortedItems[0].board.delivery_price;
-      
-      // Additional boards get 25% of delivery price
-      for (let i = 1; i < sortedItems.length; i++) {
-        group.totalPrice += sortedItems[i].board.delivery_price * 0.25;
+      if (count <= 2) {
+        group.totalPrice = 50;
+      } else {
+        group.totalPrice = 50 + (count - 2) * 10;
       }
     });
     
