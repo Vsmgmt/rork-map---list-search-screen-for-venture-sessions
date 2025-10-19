@@ -85,6 +85,17 @@ export default function MapScreen() {
     }
   }, [backendBoards]);
   
+  // Update sessions when context data loads
+  useEffect(() => {
+    if (allSessions && allSessions.length > 0) {
+      console.log('Map: Loaded sessions:', allSessions.length);
+      setSessions(allSessions);
+      setFilteredSessions(allSessions);
+      const shuffled = [...allSessions].sort(() => 0.5 - Math.random());
+      setRandomSessions(shuffled.slice(0, 20));
+    }
+  }, [allSessions]);
+  
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedKeyword(keyword);
@@ -102,52 +113,86 @@ export default function MapScreen() {
   const handleSearch = useCallback(() => {
     setLoading(true);
     
-    // Simulate loading for UX
     setTimeout(() => {
-      let results = [...boards];
-      
-      // Date filter
-      if (startDate && endDate) {
-        const filterStart = new Date(startDate);
-        const filterEnd = new Date(endDate);
-        results = results.filter(board => {
-          const boardStart = new Date(board.available_start);
-          const boardEnd = new Date(board.available_end);
-          return boardStart <= filterEnd && boardEnd >= filterStart;
+      if (viewMode === 'boards') {
+        let results = [...boards];
+        
+        if (startDate && endDate) {
+          const filterStart = new Date(startDate);
+          const filterEnd = new Date(endDate);
+          results = results.filter(board => {
+            const boardStart = new Date(board.available_start);
+            const boardEnd = new Date(board.available_end);
+            return boardStart <= filterEnd && boardEnd >= filterStart;
+          });
+        }
+        
+        if (debouncedLocation) {
+          results = results.filter(board =>
+            board.location.toLowerCase().includes(debouncedLocation.toLowerCase())
+          );
+        }
+        
+        if (debouncedKeyword) {
+          results = results.filter(board =>
+            board.short_name.toLowerCase().includes(debouncedKeyword.toLowerCase()) ||
+            board.dimensions_detail.toLowerCase().includes(debouncedKeyword.toLowerCase())
+          );
+        }
+        
+        if (selectedBoardType) {
+          results = results.filter(board => board.type === selectedBoardType);
+        }
+        
+        results.sort((a, b) => {
+          if (a.price_per_day === null) return 1;
+          if (b.price_per_day === null) return -1;
+          return a.price_per_day - b.price_per_day;
         });
+        
+        setFiltered(results);
+      } else {
+        let results = [...sessions];
+        
+        if (startDate && endDate) {
+          const filterStart = new Date(startDate);
+          const filterEnd = new Date(endDate);
+          results = results.filter(session => {
+            const sessionStart = new Date(session.available_start);
+            const sessionEnd = new Date(session.available_end);
+            return sessionStart <= filterEnd && sessionEnd >= filterStart;
+          });
+        }
+        
+        if (debouncedLocation) {
+          results = results.filter(session =>
+            session.location.toLowerCase().includes(debouncedLocation.toLowerCase())
+          );
+        }
+        
+        if (debouncedKeyword) {
+          results = results.filter(session =>
+            session.name.toLowerCase().includes(debouncedKeyword.toLowerCase()) ||
+            session.description.toLowerCase().includes(debouncedKeyword.toLowerCase())
+          );
+        }
+        
+        if (selectedSessionType) {
+          results = results.filter(session => session.type === selectedSessionType);
+        }
+        
+        if (selectedSessionLevel) {
+          results = results.filter(session => session.level === selectedSessionLevel);
+        }
+        
+        results.sort((a, b) => a.price - b.price);
+        
+        setFilteredSessions(results);
       }
       
-      // Location filter
-      if (debouncedLocation) {
-        results = results.filter(board =>
-          board.location.toLowerCase().includes(debouncedLocation.toLowerCase())
-        );
-      }
-      
-      // Keyword filter
-      if (debouncedKeyword) {
-        results = results.filter(board =>
-          board.short_name.toLowerCase().includes(debouncedKeyword.toLowerCase()) ||
-          board.dimensions_detail.toLowerCase().includes(debouncedKeyword.toLowerCase())
-        );
-      }
-      
-      // Board type filter
-      if (selectedBoardType) {
-        results = results.filter(board => board.type === selectedBoardType);
-      }
-      
-      // Sort by price
-      results.sort((a, b) => {
-        if (a.price_per_day === null) return 1;
-        if (b.price_per_day === null) return -1;
-        return a.price_per_day - b.price_per_day;
-      });
-      
-      setFiltered(results);
       setLoading(false);
     }, 300);
-  }, [boards, startDate, endDate, debouncedLocation, debouncedKeyword, selectedBoardType]);
+  }, [viewMode, boards, sessions, startDate, endDate, debouncedLocation, debouncedKeyword, selectedBoardType, selectedSessionType, selectedSessionLevel]);
   
   const boardTypes: { value: BoardType | ''; label: string }[] = [
     { value: '', label: 'All Board Types' },
@@ -166,51 +211,90 @@ export default function MapScreen() {
   // Auto-search when filters change
   useEffect(() => {
     handleSearch();
-  }, [handleSearch, startDate, endDate, debouncedLocation, debouncedKeyword, selectedBoardType]);
+  }, [handleSearch, startDate, endDate, debouncedLocation, debouncedKeyword, selectedBoardType, selectedSessionType, selectedSessionLevel, viewMode]);
   
   const markerPositions = useMemo(() => {
-    const positions = filtered.map(board => {
-      const { x, y } = lonLatToXY(board.lon, board.lat, MAP_INTRINSIC_WIDTH, MAP_INTRINSIC_HEIGHT);
-      return {
-        x: (x / MAP_INTRINSIC_WIDTH) * mapWidth,
-        y: (y / MAP_INTRINSIC_HEIGHT) * mapHeight,
-        id: board.id
-      };
-    });
-    
-    return jitterOverlappingMarkers(positions);
-  }, [filtered, mapWidth, mapHeight]);
+    if (viewMode === 'boards') {
+      const positions = filtered.map(board => {
+        const { x, y } = lonLatToXY(board.lon, board.lat, MAP_INTRINSIC_WIDTH, MAP_INTRINSIC_HEIGHT);
+        return {
+          x: (x / MAP_INTRINSIC_WIDTH) * mapWidth,
+          y: (y / MAP_INTRINSIC_HEIGHT) * mapHeight,
+          id: board.id
+        };
+      });
+      return jitterOverlappingMarkers(positions);
+    } else {
+      const positions = filteredSessions.map(session => {
+        const { x, y } = lonLatToXY(session.lon, session.lat, MAP_INTRINSIC_WIDTH, MAP_INTRINSIC_HEIGHT);
+        return {
+          x: (x / MAP_INTRINSIC_WIDTH) * mapWidth,
+          y: (y / MAP_INTRINSIC_HEIGHT) * mapHeight,
+          id: session.id
+        };
+      });
+      return jitterOverlappingMarkers(positions);
+    }
+  }, [viewMode, filtered, filteredSessions, mapWidth, mapHeight]);
   
-  const handleMarkerPress = (boardId: string) => {
-    const clickedBoard = filtered.find(b => b.id === boardId);
-    if (!clickedBoard) return;
-    
-    setSelectedId(boardId);
-    setClickedLocation({
-      lat: clickedBoard.lat,
-      lon: clickedBoard.lon,
-      locationName: clickedBoard.location
-    });
-    
-    // Find all boards within 50 miles
-    const nearby = boards
-      .map(board => ({
-        ...board,
-        distance: calculateDistance(
-          clickedBoard.lat,
-          clickedBoard.lon,
-          board.lat,
-          board.lon
-        )
-      }))
-      .filter(board => board.distance <= 50)
-      .sort((a, b) => a.distance - b.distance);
-    
-    setNearbyBoards(nearby);
-    setNearbyModalVisible(true);
+  const handleMarkerPress = (id: string) => {
+    if (viewMode === 'boards') {
+      const clickedBoard = filtered.find(b => b.id === id);
+      if (!clickedBoard) return;
+      
+      setSelectedId(id);
+      setClickedLocation({
+        lat: clickedBoard.lat,
+        lon: clickedBoard.lon,
+        locationName: clickedBoard.location
+      });
+      
+      const nearby = boards
+        .map(board => ({
+          ...board,
+          distance: calculateDistance(
+            clickedBoard.lat,
+            clickedBoard.lon,
+            board.lat,
+            board.lon
+          )
+        }))
+        .filter(board => board.distance <= 50)
+        .sort((a, b) => a.distance - b.distance);
+      
+      setNearbyBoards(nearby);
+      setNearbyModalVisible(true);
+    } else {
+      const clickedSession = filteredSessions.find(s => s.id === id);
+      if (!clickedSession) return;
+      
+      setSelectedSessionId(id);
+      setClickedLocation({
+        lat: clickedSession.lat,
+        lon: clickedSession.lon,
+        locationName: clickedSession.location
+      });
+      
+      const nearby = sessions
+        .map(session => ({
+          ...session,
+          distance: calculateDistance(
+            clickedSession.lat,
+            clickedSession.lon,
+            session.lat,
+            session.lon
+          )
+        }))
+        .filter(session => session.distance <= 50)
+        .sort((a, b) => a.distance - b.distance);
+      
+      setNearbySessions(nearby);
+      setNearbyModalVisible(true);
+    }
   };
   
   const selectedBoard = selectedId ? filtered.find(b => b.id === selectedId) : null;
+  const selectedSession = selectedSessionId ? filteredSessions.find(s => s.id === selectedSessionId) : null;
   
   const isBoardInCart = (boardId: string) => {
     return cartItems.some(item => item.board.id === boardId);
@@ -301,6 +385,55 @@ export default function MapScreen() {
             inCart && styles.boardAddButtonTextInCart
           ]}>
             {inCart ? 'In Cart' : 'Add to Cart'}
+          </Text>
+        </Pressable>
+      </Pressable>
+    );
+  };
+  
+  const renderSessionCard = ({ item }: { item: Session }) => {
+    return (
+      <Pressable
+        style={styles.boardCard}
+        onPress={() => router.push(`/session-preview?sessionId=${item.id}`)}
+      >
+        <View style={styles.boardCardThumbnail}>
+          <Image
+            source={{ uri: item.imageUrl || item.image_url }}
+            style={styles.boardCardImage}
+            resizeMode="cover"
+          />
+          <View style={styles.boardTypeOverlay}>
+            <Text style={styles.boardTypeOverlayText}>
+              {item.type.toUpperCase()}
+            </Text>
+          </View>
+        </View>
+        <Text style={styles.boardCardTitle} numberOfLines={1}>{item.name}</Text>
+        <Text style={styles.boardCardDims}>{item.level} • {item.duration}h</Text>
+        <Text style={styles.boardCardPrice}>
+          ${item.price}/session
+        </Text>
+        <View style={styles.boardLocationRow}>
+          <Text style={styles.boardCardLocation}>{item.location}</Text>
+          <View style={styles.boardLocationIcons}>
+            {(item.instructor?.avatarUrl || item.instructor?.avatar_url) ? (
+              <View style={styles.boardOwnerAvatar}>
+                <Image
+                  source={{ uri: item.instructor.avatarUrl || item.instructor.avatar_url }}
+                  style={styles.boardAvatarImage}
+                  resizeMode="cover"
+                />
+              </View>
+            ) : null}
+          </View>
+        </View>
+        <Pressable
+          style={styles.boardAddButton}
+          onPress={() => router.push(`/session-preview?sessionId=${item.id}`)}
+        >
+          <Text style={styles.boardAddButtonText}>
+            View Details
           </Text>
         </Pressable>
       </Pressable>
@@ -444,33 +577,63 @@ export default function MapScreen() {
               resizeMode="cover"
             >
               {markerPositions.map((pos) => {
-                const board = filtered.find(b => b.id === pos.id);
-                if (!board) return null;
-                
-                const isSelected = board.id === selectedId;
-                
-                return (
-                  <Pressable
-                    key={board.id}
-                    style={[
-                      styles.marker,
-                      {
-                        left: pos.x - (isSelected ? 16 : 12),
-                        top: pos.y - (isSelected ? 16 : 12),
-                        width: isSelected ? 32 : 24,
-                        height: isSelected ? 32 : 24,
-                      },
-                      isSelected && styles.markerSelected
-                    ]}
-                    onPress={() => handleMarkerPress(board.id)}
-                  >
-                    <Image
-                      source={{ uri: MARKER_URL }}
-                      style={styles.markerImage}
-                      resizeMode="contain"
-                    />
-                  </Pressable>
-                );
+                if (viewMode === 'boards') {
+                  const board = filtered.find(b => b.id === pos.id);
+                  if (!board) return null;
+                  
+                  const isSelected = board.id === selectedId;
+                  
+                  return (
+                    <Pressable
+                      key={board.id}
+                      style={[
+                        styles.marker,
+                        {
+                          left: pos.x - (isSelected ? 16 : 12),
+                          top: pos.y - (isSelected ? 16 : 12),
+                          width: isSelected ? 32 : 24,
+                          height: isSelected ? 32 : 24,
+                        },
+                        isSelected && styles.markerSelected
+                      ]}
+                      onPress={() => handleMarkerPress(board.id)}
+                    >
+                      <Image
+                        source={{ uri: MARKER_URL }}
+                        style={styles.markerImage}
+                        resizeMode="contain"
+                      />
+                    </Pressable>
+                  );
+                } else {
+                  const session = filteredSessions.find(s => s.id === pos.id);
+                  if (!session) return null;
+                  
+                  const isSelected = session.id === selectedSessionId;
+                  
+                  return (
+                    <Pressable
+                      key={session.id}
+                      style={[
+                        styles.marker,
+                        {
+                          left: pos.x - (isSelected ? 16 : 12),
+                          top: pos.y - (isSelected ? 16 : 12),
+                          width: isSelected ? 32 : 24,
+                          height: isSelected ? 32 : 24,
+                        },
+                        isSelected && styles.markerSelected
+                      ]}
+                      onPress={() => handleMarkerPress(session.id)}
+                    >
+                      <Image
+                        source={{ uri: SESSION_MARKER_URL }}
+                        style={styles.markerImage}
+                        resizeMode="contain"
+                      />
+                    </Pressable>
+                  );
+                }
               })}
             </ImageBackground>
           </View>
@@ -539,31 +702,51 @@ export default function MapScreen() {
       {/* Results Counter */}
       <View style={styles.resultsCounter}>
         <Text style={styles.resultsText}>
-          {filtered.length} board{filtered.length !== 1 ? 's' : ''} found
+          {viewMode === 'boards' 
+            ? `${filtered.length} board${filtered.length !== 1 ? 's' : ''} found`
+            : `${filteredSessions.length} session${filteredSessions.length !== 1 ? 's' : ''} found`
+          }
         </Text>
       </View>
 
-      {/* Available Boards Section */}
-      <View style={styles.availableBoardsSection}>
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Available Boards</Text>
-          <Pressable 
-            style={styles.viewAllButton}
-            onPress={() => router.push('/(tabs)/search')}
-          >
-            <Text style={styles.viewAllText}>View All</Text>
-          </Pressable>
+      {/* Available Boards/Sessions Section */}
+      {viewMode === 'boards' ? (
+        <View style={styles.availableBoardsSection}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Available Boards</Text>
+            <Pressable 
+              style={styles.viewAllButton}
+              onPress={() => router.push('/(tabs)/search')}
+            >
+              <Text style={styles.viewAllText}>View All</Text>
+            </Pressable>
+          </View>
+          <FlatList
+            data={randomBoards}
+            renderItem={renderBoardCard}
+            keyExtractor={(item) => item.id}
+            numColumns={Platform.OS === 'web' ? 4 : 2}
+            columnWrapperStyle={Platform.OS === 'web' ? styles.boardCardRow : styles.boardCardRowMobile}
+            contentContainerStyle={styles.boardListContent}
+            scrollEnabled={false}
+          />
         </View>
-        <FlatList
-          data={randomBoards}
-          renderItem={renderBoardCard}
-          keyExtractor={(item) => item.id}
-          numColumns={Platform.OS === 'web' ? 4 : 2}
-          columnWrapperStyle={Platform.OS === 'web' ? styles.boardCardRow : styles.boardCardRowMobile}
-          contentContainerStyle={styles.boardListContent}
-          scrollEnabled={false}
-        />
-      </View>
+      ) : (
+        <View style={styles.availableBoardsSection}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Available Sessions</Text>
+          </View>
+          <FlatList
+            data={randomSessions}
+            renderItem={renderSessionCard}
+            keyExtractor={(item) => item.id}
+            numColumns={Platform.OS === 'web' ? 4 : 2}
+            columnWrapperStyle={Platform.OS === 'web' ? styles.boardCardRow : styles.boardCardRowMobile}
+            contentContainerStyle={styles.boardListContent}
+            scrollEnabled={false}
+          />
+        </View>
+      )}
       
       {/* Info Bubble Modal */}
       <Modal
