@@ -683,11 +683,13 @@ export default function MapScreen() {
                       ]}
                       onPress={() => handleMarkerPress(session.id)}
                     >
-                      <Image
-                        source={{ uri: SESSION_MARKER_URL }}
-                        style={styles.markerImage}
-                        resizeMode="contain"
-                      />
+                      <View style={styles.sessionMarkerTint}>
+                        <Image
+                          source={{ uri: SESSION_MARKER_URL }}
+                          style={styles.markerImage}
+                          resizeMode="contain"
+                        />
+                      </View>
                     </Pressable>
                   );
                 }
@@ -1190,6 +1192,11 @@ const styles = StyleSheet.create({
   markerImage: {
     width: '100%',
     height: '100%',
+  },
+  sessionMarkerTint: {
+    width: '100%',
+    height: '100%',
+    tintColor: '#007AFF',
   },
   infoCard: {
     backgroundColor: 'white',
