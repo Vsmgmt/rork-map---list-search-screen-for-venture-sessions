@@ -19,7 +19,7 @@ import { router } from 'expo-router';
 import { useCart } from '@/src/context/cart';
 import { Board, BoardType } from '@/src/types/board';
 import { supabase } from '@/lib/supabase';
-import { SEED_PRO_USERS } from '@/src/data/seed-pro-users';
+import { PRO_USERS } from '@/src/data/seed-pro-users';
 import { SEED_BOARDS } from '@/src/data/seed-boards';
 
 function formatLocation(location: string | null | undefined): string {
@@ -384,17 +384,17 @@ export default function SearchScreen() {
           setUsers(data);
           setFilteredUsers(data);
         } else {
-          console.log('⚠️ No users in Supabase, using local seed users:', SEED_PRO_USERS.length);
-          setAllUsers(SEED_PRO_USERS);
-          setUsers(SEED_PRO_USERS);
-          setFilteredUsers(SEED_PRO_USERS);
+          console.log('⚠️ No users in Supabase, using local seed users:', PRO_USERS.length);
+          setAllUsers(PRO_USERS);
+          setUsers(PRO_USERS);
+          setFilteredUsers(PRO_USERS);
         }
       } catch (err: any) {
         console.error('❌ Error fetching pro users:', err.message);
         console.log('⚠️ User fetch failed, using local seed data');
-        setAllUsers(SEED_PRO_USERS);
-        setUsers(SEED_PRO_USERS);
-        setFilteredUsers(SEED_PRO_USERS);
+        setAllUsers(PRO_USERS);
+        setUsers(PRO_USERS);
+        setFilteredUsers(PRO_USERS);
       } finally {
         setLoadingUsers(false);
       }
@@ -503,7 +503,7 @@ export default function SearchScreen() {
     router.push(`/board-preview?boardId=${boardId}`);
   };
 
-  const isBoardInCart = (boardId: string) => cartItems.some((i) => i.board.id === boardId);
+  const isBoardInCart = (boardId: string) => cartItems.some((i) => i.board?.id === boardId);
 
   const handleAddToCart = (board: Board) => {
     if (!board?.id) {
@@ -522,6 +522,10 @@ export default function SearchScreen() {
   };
 
   const renderBoardCard = ({ item, index }: { item: Board; index: number }) => {
+    if (!item || !item.id) {
+      console.warn('Invalid board item at index', index);
+      return null;
+    }
     const isSelected = item.id === selectedId;
     const inCart = isBoardInCart(item.id);
     const cover = item.image_url || item.imageUrl || coverFor(item);
@@ -618,6 +622,10 @@ export default function SearchScreen() {
   };
 
   const renderUserCard = ({ item }: { item: User }) => {
+    if (!item || !item.id) {
+      console.warn('Invalid user item');
+      return null;
+    }
     const isSelected = item.id === selectedUserId;
     const userAvatar = item.avatar_url || item.avatarUrl;
 
@@ -857,9 +865,9 @@ export default function SearchScreen() {
               </View>
               <FlatList
                 ref={listRef}
-                data={filtered}
+                data={filtered.filter(item => item && item.id)}
                 renderItem={renderBoardCard}
-                keyExtractor={(item) => item.id}
+                keyExtractor={(item, index) => item?.id || `board-${index}`}
                 key={Platform.OS === 'web' ? 'web-4-cols' : 'mobile-2-cols'}
                 numColumns={Platform.OS === 'web' ? 4 : 2}
                 columnWrapperStyle={Platform.OS === 'web' ? styles.cardRow : styles.cardRowMobile}
@@ -891,9 +899,9 @@ export default function SearchScreen() {
                 </Text>
               </View>
               <FlatList
-                data={filteredUsers}
+                data={filteredUsers.filter(item => item && item.id)}
                 renderItem={renderUserCard}
-                keyExtractor={(item) => item.id}
+                keyExtractor={(item, index) => item?.id || `user-${index}`}
                 key={Platform.OS === 'web' ? 'web-4-cols-users' : 'mobile-2-cols-users'}
                 numColumns={Platform.OS === 'web' ? 4 : 2}
                 columnWrapperStyle={Platform.OS === 'web' ? styles.cardRow : styles.cardRowMobile}
