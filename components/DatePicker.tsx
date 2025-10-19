@@ -464,7 +464,111 @@ const styles = StyleSheet.create({
     fontWeight: 'bold' as const,
     color: '#333',
   },
+  timeSlotsList: {
+    padding: 20,
+    gap: 12,
+  },
+  timeSlotItem: {
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    backgroundColor: '#f5f5f5',
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: 'transparent',
+  },
+  selectedTimeSlot: {
+    backgroundColor: '#007AFF',
+    borderColor: '#007AFF',
+  },
+  timeSlotText: {
+    fontSize: 16,
+    color: '#333',
+    textAlign: 'center',
+    fontWeight: '500',
+  },
+  selectedTimeSlotText: {
+    color: 'white',
+    fontWeight: '600',
+  },
 } as const);
+
+export function TimeSlotPicker({ value, onTimeChange, placeholder, style, timeSlots }: {
+  value: string;
+  onTimeChange: (time: string) => void;
+  placeholder: string;
+  style?: any;
+  timeSlots?: string[];
+}) {
+  const [showPicker, setShowPicker] = useState(false);
+
+  const formatDisplayTime = (timeString: string) => {
+    if (!timeString) return placeholder;
+    try {
+      const [hours, minutes] = timeString.split(':').map(Number);
+      const isPM = hours >= 12;
+      const displayHours = hours % 12 || 12;
+      return `${displayHours}:${minutes.toString().padStart(2, '0')} ${isPM ? 'PM' : 'AM'}`;
+    } catch {
+      return placeholder;
+    }
+  };
+
+  const openPicker = () => {
+    setShowPicker(true);
+  };
+
+  const closePicker = () => {
+    setShowPicker(false);
+  };
+
+  const handleTimeSelect = (time: string) => {
+    onTimeChange(time);
+    closePicker();
+  };
+
+  return (
+    <>
+      <Pressable style={[styles.dateButton, style]} onPress={openPicker}>
+        <Calendar size={16} color="#666" />
+        <Text style={[styles.dateText, !value && styles.placeholderText]}>
+          {formatDisplayTime(value)}
+        </Text>
+      </Pressable>
+
+      <Modal
+        visible={showPicker}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={closePicker}
+      >
+        <Pressable style={styles.modalOverlay} onPress={closePicker}>
+          <Pressable style={styles.modalContent} onPress={(e) => e.stopPropagation()}>
+            <View style={styles.modalHeader}>
+              <Pressable onPress={closePicker}>
+                <Text style={styles.cancelButton}>Cancel</Text>
+              </Pressable>
+              <Text style={styles.modalTitle}>Select Time</Text>
+              <View style={{ width: 60 }} />
+            </View>
+            <View style={styles.timeSlotsList}>
+              {timeSlots?.map((slot) => (
+                <Pressable
+                  key={slot}
+                  style={[styles.timeSlotItem, value === slot && styles.selectedTimeSlot]}
+                  onPress={() => handleTimeSelect(slot)}
+                >
+                  <Text style={[styles.timeSlotText, value === slot && styles.selectedTimeSlotText]}>
+                    {formatDisplayTime(slot)}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
+    </>
+  );
+}
 
 export function TimePicker({ value, onTimeChange, placeholder, style }: {
   value: string;

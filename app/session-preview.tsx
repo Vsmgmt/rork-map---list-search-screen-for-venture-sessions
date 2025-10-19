@@ -15,7 +15,7 @@ import { X, MapPin, Clock, Users, Star, Award, CheckCircle } from 'lucide-react-
 import { useSessions } from '@/src/context/sessions';
 import { Session } from '@/src/types/session';
 import Colors from '@/constants/colors';
-import DatePicker, { TimePicker } from '@/components/DatePicker';
+import DatePicker, { TimeSlotPicker } from '@/components/DatePicker';
 
 export default function SessionPreviewModal() {
   const insets = useSafeAreaInsets();
@@ -306,11 +306,12 @@ export default function SessionPreviewModal() {
                 </View>
                 <View style={styles.dateColumn}>
                   <Text style={styles.inputLabel}>Time</Text>
-                  <TimePicker
+                  <TimeSlotPicker
                     value={bookingTime}
                     onTimeChange={setBookingTime}
                     placeholder="Select time"
                     style={styles.dateInput}
+                    timeSlots={['09:00', '11:00', '14:00', '16:00']}
                   />
                 </View>
               </View>
