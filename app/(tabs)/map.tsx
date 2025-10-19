@@ -26,7 +26,6 @@ import { Session, SessionType, SessionLevel } from '@/src/types/session';
 
 const WORLD_MAP_URL = 'https://images.unsplash.com/photo-1526778548025-fa2f459cd5c1?w=2000&h=1000&fit=crop';
 const MARKER_URL = 'https://cdn-icons-png.flaticon.com/32/684/684908.png';
-const SESSION_MARKER_URL = 'https://cdn-icons-png.flaticon.com/32/3656/3656890.png';
 
 const MAP_INTRINSIC_WIDTH = 2000;
 const MAP_INTRINSIC_HEIGHT = 1000;
@@ -683,13 +682,11 @@ export default function MapScreen() {
                       ]}
                       onPress={() => handleMarkerPress(session.id)}
                     >
-                      <View style={styles.sessionMarkerTint}>
-                        <Image
-                          source={{ uri: SESSION_MARKER_URL }}
-                          style={styles.markerImage}
-                          resizeMode="contain"
-                        />
-                      </View>
+                      <Image
+                        source={{ uri: MARKER_URL }}
+                        style={styles.sessionMarkerImage}
+                        resizeMode="contain"
+                      />
                     </Pressable>
                   );
                 }
@@ -1193,7 +1190,7 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
   },
-  sessionMarkerTint: {
+  sessionMarkerImage: {
     width: '100%',
     height: '100%',
     tintColor: '#007AFF',
