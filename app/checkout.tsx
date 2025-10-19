@@ -40,6 +40,8 @@ export default function CheckoutScreen() {
     setCheckoutInfo(prev => ({ ...prev, [field]: value }));
   };
 
+  const hasOnlySessionItems = cartItems.every(item => !!item.session);
+  
   const validateForm = () => {
     const { firstName, lastName, email, phone, pickupTime, returnTime } = checkoutInfo;
     
@@ -59,11 +61,11 @@ export default function CheckoutScreen() {
       Alert.alert('Validation Error', 'Please enter your phone number.');
       return false;
     }
-    if (!pickupTime.trim()) {
+    if (!hasOnlySessionItems && !pickupTime.trim()) {
       Alert.alert('Validation Error', 'Please specify your preferred pickup time.');
       return false;
     }
-    if (!returnTime.trim()) {
+    if (!hasOnlySessionItems && !returnTime.trim()) {
       Alert.alert('Validation Error', 'Please specify your preferred return time.');
       return false;
     }
@@ -269,29 +271,35 @@ export default function CheckoutScreen() {
           </View>
         </View>
 
+        {!hasOnlySessionItems && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Pickup & Return</Text>
+            
+            <View style={styles.inputContainer}>
+              <Calendar size={20} color="#6c757d" />
+              <TextInput
+                style={styles.input}
+                placeholder="Preferred Pickup Time (e.g., 9:00 AM)"
+                value={checkoutInfo.pickupTime}
+                onChangeText={(text) => handleInputChange('pickupTime', text)}
+              />
+            </View>
+
+            <View style={styles.inputContainer}>
+              <Calendar size={20} color="#6c757d" />
+              <TextInput
+                style={styles.input}
+                placeholder="Preferred Return Time (e.g., 5:00 PM)"
+                value={checkoutInfo.returnTime}
+                onChangeText={(text) => handleInputChange('returnTime', text)}
+              />
+            </View>
+          </View>
+        )}
+
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Pickup & Return</Text>
+          <Text style={styles.sectionTitle}>{hasOnlySessionItems ? 'Additional Notes' : 'Additional Information'}</Text>
           
-          <View style={styles.inputContainer}>
-            <Calendar size={20} color="#6c757d" />
-            <TextInput
-              style={styles.input}
-              placeholder="Preferred Pickup Time (e.g., 9:00 AM)"
-              value={checkoutInfo.pickupTime}
-              onChangeText={(text) => handleInputChange('pickupTime', text)}
-            />
-          </View>
-
-          <View style={styles.inputContainer}>
-            <Calendar size={20} color="#6c757d" />
-            <TextInput
-              style={styles.input}
-              placeholder="Preferred Return Time (e.g., 5:00 PM)"
-              value={checkoutInfo.returnTime}
-              onChangeText={(text) => handleInputChange('returnTime', text)}
-            />
-          </View>
-
           <View style={styles.inputContainer}>
             <MessageSquare size={20} color="#6c757d" />
             <TextInput
@@ -324,18 +332,20 @@ export default function CheckoutScreen() {
           </View>
         )}
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Pickup Locations</Text>
-          {Array.from(new Set(cartItems.filter(item => !item.deliverySelected && item.board).map(item => item.board!.pickup_spot))).map((location) => (
-            <View key={location} style={styles.locationItem}>
-              <MapPin size={16} color={Colors.light.tint} />
-              <Text style={styles.locationText}>{location}</Text>
-            </View>
-          ))}
-          {cartItems.every(item => item.deliverySelected || !item.board) && (
-            <Text style={styles.noPickupText}>All items will be delivered</Text>
-          )}
-        </View>
+        {!hasOnlySessionItems && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Pickup Locations</Text>
+            {Array.from(new Set(cartItems.filter(item => !item.deliverySelected && item.board).map(item => item.board!.pickup_spot))).map((location) => (
+              <View key={location} style={styles.locationItem}>
+                <MapPin size={16} color={Colors.light.tint} />
+                <Text style={styles.locationText}>{location}</Text>
+              </View>
+            ))}
+            {cartItems.every(item => item.deliverySelected || !item.board) && (
+              <Text style={styles.noPickupText}>All items will be delivered</Text>
+            )}
+          </View>
+        )}
       </ScrollView>
 
       <View style={styles.footer}>
