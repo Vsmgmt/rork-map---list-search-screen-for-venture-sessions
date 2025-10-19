@@ -203,8 +203,33 @@ export default function MapScreen() {
     { value: 'sup', label: 'SUP' },
   ];
 
+  const sessionTypes: { value: SessionType | ''; label: string }[] = [
+    { value: '', label: 'All Session Types' },
+    { value: 'lesson', label: 'Lesson' },
+    { value: 'tour', label: 'Tour' },
+    { value: 'camp', label: 'Camp' },
+    { value: 'session', label: 'Session' },
+  ];
+
+  const sessionLevels: { value: SessionLevel | ''; label: string }[] = [
+    { value: '', label: 'All Levels' },
+    { value: 'beginner', label: 'Beginner' },
+    { value: 'intermediate', label: 'Intermediate' },
+    { value: 'advanced', label: 'Advanced' },
+  ];
+
   const handleBoardTypeSelect = (type: BoardType | '') => {
     setSelectedBoardType(type);
+    setShowDropdown(false);
+  };
+
+  const handleSessionTypeSelect = (type: SessionType | '') => {
+    setSelectedSessionType(type);
+    setShowDropdown(false);
+  };
+
+  const handleSessionLevelSelect = (level: SessionLevel | '') => {
+    setSelectedSessionLevel(level);
     setShowDropdown(false);
   };
   
@@ -515,19 +540,31 @@ export default function MapScreen() {
             value={keyword}
             onChangeText={setKeyword}
           />
-          <Pressable
-            style={styles.dropdownButton}
-            onPress={() => setShowDropdown(true)}
-          >
-            <Text style={styles.dropdownButtonText}>
-              {boardTypes.find(type => type.value === selectedBoardType)?.label || 'All Board Types'}
-            </Text>
-          </Pressable>
-
+          {viewMode === 'boards' ? (
+            <Pressable
+              style={styles.dropdownButton}
+              onPress={() => setShowDropdown(true)}
+            >
+              <Text style={styles.dropdownButtonText}>
+                {boardTypes.find(type => type.value === selectedBoardType)?.label || 'All Board Types'}
+              </Text>
+            </Pressable>
+          ) : (
+            <>
+              <Pressable
+                style={styles.dropdownButton}
+                onPress={() => setShowDropdown(true)}
+              >
+                <Text style={styles.dropdownButtonText}>
+                  {sessionTypes.find(type => type.value === selectedSessionType)?.label || 'All Session Types'}
+                </Text>
+              </Pressable>
+            </>
+          )}
         </View>
       </View>
       
-      {/* Board Type Dropdown Modal */}
+      {/* Board Type / Session Type Dropdown Modal */}
       <Modal
         visible={showDropdown}
         transparent={true}
@@ -539,23 +576,43 @@ export default function MapScreen() {
           onPress={() => setShowDropdown(false)}
         >
           <View style={styles.dropdownModal}>
-            {boardTypes.map((type) => (
-              <Pressable
-                key={type.value}
-                style={[
-                  styles.dropdownItem,
-                  selectedBoardType === type.value && styles.dropdownItemSelected
-                ]}
-                onPress={() => handleBoardTypeSelect(type.value)}
-              >
-                <Text style={[
-                  styles.dropdownItemText,
-                  selectedBoardType === type.value && styles.dropdownItemTextSelected
-                ]}>
-                  {type.label}
-                </Text>
-              </Pressable>
-            ))}
+            {viewMode === 'boards' ? (
+              boardTypes.map((type) => (
+                <Pressable
+                  key={type.value}
+                  style={[
+                    styles.dropdownItem,
+                    selectedBoardType === type.value && styles.dropdownItemSelected
+                  ]}
+                  onPress={() => handleBoardTypeSelect(type.value)}
+                >
+                  <Text style={[
+                    styles.dropdownItemText,
+                    selectedBoardType === type.value && styles.dropdownItemTextSelected
+                  ]}>
+                    {type.label}
+                  </Text>
+                </Pressable>
+              ))
+            ) : (
+              sessionTypes.map((type) => (
+                <Pressable
+                  key={type.value}
+                  style={[
+                    styles.dropdownItem,
+                    selectedSessionType === type.value && styles.dropdownItemSelected
+                  ]}
+                  onPress={() => handleSessionTypeSelect(type.value)}
+                >
+                  <Text style={[
+                    styles.dropdownItemText,
+                    selectedSessionType === type.value && styles.dropdownItemTextSelected
+                  ]}>
+                    {type.label}
+                  </Text>
+                </Pressable>
+              ))
+            )}
           </View>
         </Pressable>
       </Modal>
@@ -793,9 +850,11 @@ export default function MapScreen() {
             <View style={styles.modalTitleContainer}>
               <MapPin size={24} color="#007AFF" />
               <View>
-                <Text style={styles.modalTitle}>Boards within 50 miles</Text>
+                <Text style={styles.modalTitle}>
+                  {viewMode === 'boards' ? 'Boards' : 'Sessions'} within 50 miles
+                </Text>
                 <Text style={styles.modalSubtitle}>
-                  {clickedLocation?.locationName} area • {nearbyBoards.length} boards
+                  {clickedLocation?.locationName} area • {viewMode === 'boards' ? nearbyBoards.length : nearbySessions.length} {viewMode === 'boards' ? 'boards' : 'sessions'}
                 </Text>
               </View>
             </View>
@@ -807,78 +866,141 @@ export default function MapScreen() {
             </Pressable>
           </View>
           
-          <FlatList
-            data={nearbyBoards}
-            keyExtractor={(item) => item.id}
-            contentContainerStyle={styles.modalList}
-            renderItem={({ item }) => (
-              <Pressable
-                style={styles.nearbyCard}
-                onPress={() => {
-                  setNearbyModalVisible(false);
-                  router.push(`/board-preview?boardId=${item.id}`);
-                }}
-              >
-                <View style={styles.nearbyCardHeader}>
-                  <View style={styles.nearbyThumbnail}>
-                    <Image
-                      source={{ uri: item.imageUrl }}
-                      style={styles.nearbyImage}
-                      resizeMode="contain"
-                    />
-                    <View style={styles.nearbyTypeOverlay}>
-                      <Text style={styles.nearbyTypeOverlayText}>
-                        {item.type === 'soft-top' ? 'SOFT' : 
-                         item.type === 'longboard' ? 'LONG' : 
-                         item.type === 'shortboard' ? 'SHORT' :
-                         item.type === 'fish' ? 'FISH' : 'SUP'}
+          {viewMode === 'boards' ? (
+            <FlatList
+              data={nearbyBoards}
+              keyExtractor={(item) => item.id}
+              contentContainerStyle={styles.modalList}
+              renderItem={({ item }) => (
+                <Pressable
+                  style={styles.nearbyCard}
+                  onPress={() => {
+                    setNearbyModalVisible(false);
+                    router.push(`/board-preview?boardId=${item.id}`);
+                  }}
+                >
+                  <View style={styles.nearbyCardHeader}>
+                    <View style={styles.nearbyThumbnail}>
+                      <Image
+                        source={{ uri: item.imageUrl }}
+                        style={styles.nearbyImage}
+                        resizeMode="contain"
+                      />
+                      <View style={styles.nearbyTypeOverlay}>
+                        <Text style={styles.nearbyTypeOverlayText}>
+                          {item.type === 'soft-top' ? 'SOFT' : 
+                           item.type === 'longboard' ? 'LONG' : 
+                           item.type === 'shortboard' ? 'SHORT' :
+                           item.type === 'fish' ? 'FISH' : 'SUP'}
+                        </Text>
+                      </View>
+                    </View>
+                    <View style={styles.nearbyDetails}>
+                      <Text style={styles.nearbyTitle} numberOfLines={1}>{item.short_name}</Text>
+                      <Text style={styles.nearbyDims}>{item.dimensions_detail}</Text>
+                      <Text style={styles.nearbyDistance}>
+                        {item.distance < 1 
+                          ? `${(item.distance * 5280).toFixed(0)} ft away`
+                          : `${item.distance.toFixed(1)} miles away`
+                        }
                       </Text>
+                      {item.price_per_day && (
+                        <Text style={styles.nearbyPrice}>
+                          ${item.price_per_day}/day
+                        </Text>
+                      )}
+                    </View>
+                    <View style={styles.nearbyActions}>
+                      <Pressable
+                        style={[
+                          styles.nearbyAddButton,
+                          isBoardInCart(item.id) && styles.nearbyAddButtonInCart
+                        ]}
+                        onPress={(e) => {
+                          e.stopPropagation();
+                          handleAddToCart(item);
+                        }}
+                        disabled={isBoardInCart(item.id)}
+                      >
+                        <Text style={[
+                          styles.nearbyAddButtonText,
+                          isBoardInCart(item.id) && styles.nearbyAddButtonTextInCart
+                        ]}>
+                          {isBoardInCart(item.id) ? 'In Cart' : 'Add'}
+                        </Text>
+                      </Pressable>
                     </View>
                   </View>
-                  <View style={styles.nearbyDetails}>
-                    <Text style={styles.nearbyTitle} numberOfLines={1}>{item.short_name}</Text>
-                    <Text style={styles.nearbyDims}>{item.dimensions_detail}</Text>
-                    <Text style={styles.nearbyDistance}>
-                      {item.distance < 1 
-                        ? `${(item.distance * 5280).toFixed(0)} ft away`
-                        : `${item.distance.toFixed(1)} miles away`
-                      }
-                    </Text>
-                    {item.price_per_day && (
-                      <Text style={styles.nearbyPrice}>
-                        ${item.price_per_day}/day
-                      </Text>
-                    )}
-                  </View>
-                  <View style={styles.nearbyActions}>
-                    <Pressable
-                      style={[
-                        styles.nearbyAddButton,
-                        isBoardInCart(item.id) && styles.nearbyAddButtonInCart
-                      ]}
-                      onPress={(e) => {
-                        e.stopPropagation();
-                        handleAddToCart(item);
-                      }}
-                      disabled={isBoardInCart(item.id)}
-                    >
-                      <Text style={[
-                        styles.nearbyAddButtonText,
-                        isBoardInCart(item.id) && styles.nearbyAddButtonTextInCart
-                      ]}>
-                        {isBoardInCart(item.id) ? 'In Cart' : 'Add'}
-                      </Text>
-                    </Pressable>
-                  </View>
+                </Pressable>
+              )}
+              ListEmptyComponent={
+                <View style={styles.emptyState}>
+                  <Text style={styles.emptyStateText}>No boards found within 50 miles</Text>
                 </View>
-              </Pressable>
-            )}
-            ListEmptyComponent={
-              <View style={styles.emptyState}>
-                <Text style={styles.emptyStateText}>No boards found within 50 miles</Text>
-              </View>
-            }
-          />
+              }
+            />
+          ) : (
+            <FlatList
+              data={nearbySessions}
+              keyExtractor={(item) => item.id}
+              contentContainerStyle={styles.modalList}
+              renderItem={({ item }) => (
+                <Pressable
+                  style={styles.nearbyCard}
+                  onPress={() => {
+                    setNearbyModalVisible(false);
+                    router.push(`/session-preview?sessionId=${item.id}`);
+                  }}
+                >
+                  <View style={styles.nearbyCardHeader}>
+                    <View style={styles.nearbyThumbnail}>
+                      <Image
+                        source={{ uri: item.imageUrl || item.image_url }}
+                        style={styles.nearbyImage}
+                        resizeMode="cover"
+                      />
+                      <View style={styles.nearbyTypeOverlay}>
+                        <Text style={styles.nearbyTypeOverlayText}>
+                          {item.type.toUpperCase()}
+                        </Text>
+                      </View>
+                    </View>
+                    <View style={styles.nearbyDetails}>
+                      <Text style={styles.nearbyTitle} numberOfLines={1}>{item.name}</Text>
+                      <Text style={styles.nearbyDims}>{item.level} • {item.duration}h</Text>
+                      <Text style={styles.nearbyDistance}>
+                        {item.distance < 1 
+                          ? `${(item.distance * 5280).toFixed(0)} ft away`
+                          : `${item.distance.toFixed(1)} miles away`
+                        }
+                      </Text>
+                      <Text style={styles.nearbyPrice}>
+                        ${item.price}/session
+                      </Text>
+                    </View>
+                    <View style={styles.nearbyActions}>
+                      <Pressable
+                        style={styles.nearbyAddButton}
+                        onPress={() => {
+                          setNearbyModalVisible(false);
+                          router.push(`/session-preview?sessionId=${item.id}`);
+                        }}
+                      >
+                        <Text style={styles.nearbyAddButtonText}>
+                          View
+                        </Text>
+                      </Pressable>
+                    </View>
+                  </View>
+                </Pressable>
+              )}
+              ListEmptyComponent={
+                <View style={styles.emptyState}>
+                  <Text style={styles.emptyStateText}>No sessions found within 50 miles</Text>
+                </View>
+              }
+            />
+          )}
         </View>
       </Modal>
     </ScrollView>
