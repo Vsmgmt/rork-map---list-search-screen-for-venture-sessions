@@ -22,7 +22,8 @@ import { supabase } from '@/lib/supabase';
 import { SEED_PRO_USERS } from '@/src/data/seed-pro-users';
 import { SEED_BOARDS } from '@/src/data/seed-boards';
 
-function formatLocation(location: string): string {
+function formatLocation(location: string | null | undefined): string {
+  if (!location) return '';
   const parts = location.split(',').map(p => p.trim());
   
   if (parts.length === 0) return location;
