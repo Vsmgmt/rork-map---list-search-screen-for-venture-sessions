@@ -27,6 +27,7 @@ interface PayModalProps {
   onPaymentComplete: () => void;
   totalAmount: number;
   customerName: string;
+  description?: string;
 }
 
 type PaymentMethod = 'card' | 'apple' | 'google' | 'paypal';
@@ -36,7 +37,8 @@ export default function PayModal({
   onClose, 
   onPaymentComplete, 
   totalAmount, 
-  customerName 
+  customerName,
+  description 
 }: PayModalProps) {
   const [selectedMethod, setSelectedMethod] = useState<PaymentMethod>('card');
   const [isProcessing, setIsProcessing] = useState(false);
@@ -164,7 +166,7 @@ export default function PayModal({
           <View style={styles.amountSection}>
             <Text style={styles.amountLabel}>Total Amount</Text>
             <Text style={styles.amountValue}>${totalAmount}</Text>
-            <Text style={styles.amountDescription}>Surfboard rental for {customerName}</Text>
+            <Text style={styles.amountDescription}>{description || `Booking for ${customerName}`}</Text>
           </View>
 
           <View style={styles.section}>

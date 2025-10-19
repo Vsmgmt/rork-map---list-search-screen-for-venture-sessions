@@ -41,6 +41,33 @@ export default function CheckoutScreen() {
   };
 
   const hasOnlySessionItems = cartItems.every(item => !!item.session);
+
+  const getPaymentDescription = () => {
+    if (cartItems.length === 0) return 'Booking';
+    
+    if (cartItems.length === 1) {
+      const item = cartItems[0];
+      if (item.session) {
+        const sessionType = item.session.type.charAt(0).toUpperCase() + item.session.type.slice(1);
+        const date = formatDate(item.startDate);
+        const timeInfo = item.bookingTime ? ` • ${item.bookingTime}` : '';
+        return `${item.session.name} (${sessionType})${timeInfo} • ${date}`;
+      } else if (item.board) {
+        return `${item.board.short_name} rental • ${formatDate(item.startDate)} - ${formatDate(item.endDate)}`;
+      }
+    }
+    
+    const sessionCount = cartItems.filter(item => item.session).length;
+    const boardCount = cartItems.filter(item => item.board).length;
+    
+    if (sessionCount > 0 && boardCount === 0) {
+      return `${sessionCount} session${sessionCount > 1 ? 's' : ''}`;
+    } else if (boardCount > 0 && sessionCount === 0) {
+      return `${boardCount} board rental${boardCount > 1 ? 's' : ''}`;
+    } else {
+      return `${sessionCount} session${sessionCount > 1 ? 's' : ''} & ${boardCount} board${boardCount > 1 ? 's' : ''}`;
+    }
+  };
   
   const validateForm = () => {
     const { firstName, lastName, email, phone, pickupTime, returnTime } = checkoutInfo;
@@ -376,6 +403,7 @@ export default function CheckoutScreen() {
         onPaymentComplete={handlePaymentComplete}
         totalAmount={getTotalPrice()}
         customerName={`${checkoutInfo.firstName} ${checkoutInfo.lastName}`.trim() || 'Customer'}
+        description={getPaymentDescription()}
       />
     </View>
   );
