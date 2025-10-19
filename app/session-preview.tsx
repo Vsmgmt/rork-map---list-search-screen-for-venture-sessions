@@ -13,6 +13,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLocalSearchParams, router } from 'expo-router';
 import { X, MapPin, Clock, Users, Star, Award, CheckCircle } from 'lucide-react-native';
 import { useSessions } from '@/src/context/sessions';
+import { useCart } from '@/src/context/cart';
 import { Session } from '@/src/types/session';
 import Colors from '@/constants/colors';
 import DatePicker, { TimeSlotPicker } from '@/components/DatePicker';
@@ -145,16 +146,7 @@ export default function SessionPreviewModal() {
       totalPrice: session ? session.price * participants : 0,
     });
 
-    Alert.alert(
-      'Booking Confirmed!',
-      `Your ${session?.type} has been booked for ${bookingDate}${session?.type !== 'camp' ? ` at ${bookingTime}` : ` to ${endDate}`} for ${participants} ${participants === 1 ? 'person' : 'people'}.`,
-      [
-        {
-          text: 'OK',
-          onPress: () => router.back(),
-        },
-      ]
-    );
+    router.push('/checkout');
   };
 
   return (
