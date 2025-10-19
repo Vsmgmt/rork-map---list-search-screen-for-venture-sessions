@@ -521,10 +521,10 @@ export default function SearchScreen() {
     Alert.alert('Added to Cart', `${board.short_name} has been added to your cart!`);
   };
 
-  const renderBoardCard = ({ item, index }: { item: Board; index: number }) => {
+  const renderBoardCard = ({ item, index }: { item: Board | null | undefined; index: number }) => {
     if (!item || !item.id) {
       console.warn('Invalid board item at index', index);
-      return null;
+      return <View key={`invalid-${index}`} />;
     }
     const isSelected = item.id === selectedId;
     const inCart = isBoardInCart(item.id);
@@ -621,10 +621,10 @@ export default function SearchScreen() {
     );
   };
 
-  const renderUserCard = ({ item }: { item: User }) => {
+  const renderUserCard = ({ item }: { item: User | null | undefined }) => {
     if (!item || !item.id) {
       console.warn('Invalid user item');
-      return null;
+      return <View />;
     }
     const isSelected = item.id === selectedUserId;
     const userAvatar = item.avatar_url || item.avatarUrl;
@@ -865,9 +865,9 @@ export default function SearchScreen() {
               </View>
               <FlatList
                 ref={listRef}
-                data={filtered.filter(item => item && item.id)}
+                data={filtered.filter((item): item is Board => item != null && typeof item.id === 'string' && item.id.length > 0)}
                 renderItem={renderBoardCard}
-                keyExtractor={(item, index) => item?.id || `board-${index}`}
+                keyExtractor={(item, index) => (item?.id && typeof item.id === 'string') ? item.id : `board-${index}`}
                 key={Platform.OS === 'web' ? 'web-4-cols' : 'mobile-2-cols'}
                 numColumns={Platform.OS === 'web' ? 4 : 2}
                 columnWrapperStyle={Platform.OS === 'web' ? styles.cardRow : styles.cardRowMobile}
@@ -899,9 +899,9 @@ export default function SearchScreen() {
                 </Text>
               </View>
               <FlatList
-                data={filteredUsers.filter(item => item && item.id)}
+                data={filteredUsers.filter((item): item is User => item != null && typeof item.id === 'string' && item.id.length > 0)}
                 renderItem={renderUserCard}
-                keyExtractor={(item, index) => item?.id || `user-${index}`}
+                keyExtractor={(item, index) => (item?.id && typeof item.id === 'string') ? item.id : `user-${index}`}
                 key={Platform.OS === 'web' ? 'web-4-cols-users' : 'mobile-2-cols-users'}
                 numColumns={Platform.OS === 'web' ? 4 : 2}
                 columnWrapperStyle={Platform.OS === 'web' ? styles.cardRow : styles.cardRowMobile}

@@ -145,41 +145,53 @@ export default function CheckoutScreen() {
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Order Summary</Text>
-          {cartItems.map((item, index) => (
-            <View key={`${item.board.id}-${index}`} style={styles.orderItem}>
-              <View style={styles.itemInfo}>
-                <Text style={styles.boardName}>{item.board.short_name}</Text>
-                <Text style={styles.boardDetails}>{item.board.dimensions_detail}</Text>
-                <View style={styles.rentalInfo}>
-                  <Text style={styles.rentalText}>
-                    {formatDate(item.startDate)} - {formatDate(item.endDate)} ({item.days} days)
-                  </Text>
-                  <View style={[styles.typeBadge, { backgroundColor: getTypeColor(item.board.type) }]}>
-                    <Text style={styles.typeText}>
-                      {item.board.type.charAt(0).toUpperCase() + item.board.type.slice(1)}
+          {cartItems.map((item, index) => {
+            const isSession = !!item.session;
+            const itemId = isSession ? item.session!.id : item.board?.id || index.toString();
+            const itemName = isSession ? item.session!.name : item.board?.short_name || 'Unknown';
+            const itemDetails = isSession 
+              ? `${item.session!.type.charAt(0).toUpperCase() + item.session!.type.slice(1)} • ${item.session!.level}`
+              : item.board?.dimensions_detail || '';
+            const itemType = isSession ? item.session!.type : item.board?.type || 'unknown';
+            
+            return (
+              <View key={`${itemId}-${index}`} style={styles.orderItem}>
+                <View style={styles.itemInfo}>
+                  <Text style={styles.boardName}>{itemName}</Text>
+                  <Text style={styles.boardDetails}>{itemDetails}</Text>
+                  <View style={styles.rentalInfo}>
+                    <Text style={styles.rentalText}>
+                      {formatDate(item.startDate)} - {formatDate(item.endDate)} ({item.days} days)
+                      {isSession && item.bookingTime && ` • ${item.bookingTime}`}
+                      {isSession && item.participants && ` • ${item.participants} participant${item.participants > 1 ? 's' : ''}`}
                     </Text>
-                  </View>
-                </View>
-                {item.board.delivery_available && (
-                  <Pressable 
-                    style={styles.deliveryOption} 
-                    onPress={() => toggleDelivery(index)}
-                  >
-                    <View style={styles.deliveryCheckbox}>
-                      {item.deliverySelected && (
-                        <View style={styles.deliveryCheckboxChecked} />
-                      )}
+                    <View style={[styles.typeBadge, { backgroundColor: getTypeColor(itemType) }]}>
+                      <Text style={styles.typeText}>
+                        {itemType.charAt(0).toUpperCase() + itemType.slice(1)}
+                      </Text>
                     </View>
-                    <Truck size={16} color={Colors.light.tint} />
-                    <Text style={styles.deliveryText}>Delivery (${item.board.delivery_price})</Text>
-                  </Pressable>
-                )}
+                  </View>
+                  {!isSession && item.board?.delivery_available && (
+                    <Pressable 
+                      style={styles.deliveryOption} 
+                      onPress={() => toggleDelivery(index)}
+                    >
+                      <View style={styles.deliveryCheckbox}>
+                        {item.deliverySelected && (
+                          <View style={styles.deliveryCheckboxChecked} />
+                        )}
+                      </View>
+                      <Truck size={16} color={Colors.light.tint} />
+                      <Text style={styles.deliveryText}>Delivery (${item.board.delivery_price})</Text>
+                    </Pressable>
+                  )}
+                </View>
+                <View style={styles.priceContainer}>
+                  <Text style={styles.itemPrice}>${item.totalPrice}</Text>
+                </View>
               </View>
-              <View style={styles.priceContainer}>
-                <Text style={styles.itemPrice}>${item.totalPrice}</Text>
-              </View>
-            </View>
-          ))}
+            );
+          })}
           {getDeliveryBreakdown().length > 0 && (
             <View style={styles.deliveryBreakdownSection}>
               <Text style={styles.deliveryBreakdownTitle}>Delivery Pricing</Text>
@@ -314,13 +326,13 @@ export default function CheckoutScreen() {
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Pickup Locations</Text>
-          {Array.from(new Set(cartItems.filter(item => !item.deliverySelected).map(item => item.board.pickup_spot))).map((location) => (
+          {Array.from(new Set(cartItems.filter(item => !item.deliverySelected && item.board).map(item => item.board!.pickup_spot))).map((location) => (
             <View key={location} style={styles.locationItem}>
               <MapPin size={16} color={Colors.light.tint} />
               <Text style={styles.locationText}>{location}</Text>
             </View>
           ))}
-          {cartItems.every(item => item.deliverySelected) && (
+          {cartItems.every(item => item.deliverySelected || !item.board) && (
             <Text style={styles.noPickupText}>All items will be delivered</Text>
           )}
         </View>
