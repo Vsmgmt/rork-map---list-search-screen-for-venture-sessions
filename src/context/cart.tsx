@@ -2,6 +2,7 @@ import createContextHook from '@nkzw/create-context-hook';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Board, CartItem, CartExtra, Extra } from '@/src/types/board';
+import { Session } from '@/src/types/session';
 import { useBoards } from '@/src/context/boards';
 import { AVAILABLE_EXTRAS } from '@/constants/extras';
 
@@ -65,9 +66,9 @@ export const [CartProvider, useCart] = createContextHook(() => {
               deliverySelected: item.deliverySelected,
               deliveryPrice: item.deliveryPrice,
               extras,
-            };
+            } as CartItem;
           })
-          .filter((item): item is CartItem => item !== null);
+          .filter(item => item !== null) as CartItem[];
         setCartItems(reconstructedItems);
       }
     } catch (error) {
@@ -94,23 +95,25 @@ export const [CartProvider, useCart] = createContextHook(() => {
         return;
       }
       
-      // Convert to lightweight storage format
-      const storedItems: StoredCartItem[] = items.map(item => ({
-        boardId: item.board.id,
-        startDate: item.startDate,
-        endDate: item.endDate,
-        days: item.days,
-        totalPrice: item.totalPrice,
-        rentalType: item.rentalType,
-        deliverySelected: item.deliverySelected,
-        deliveryPrice: item.deliveryPrice,
-        extras: item.extras.map(cartExtra => ({
-          extraId: cartExtra.extra.id,
-          quantity: cartExtra.quantity,
-          totalPrice: cartExtra.totalPrice,
-          size: cartExtra.size,
-        })),
-      }));
+      // Convert to lightweight storage format (only boards for now)
+      const storedItems: StoredCartItem[] = items
+        .filter(item => item.board)
+        .map(item => ({
+          boardId: item.board!.id,
+          startDate: item.startDate,
+          endDate: item.endDate,
+          days: item.days,
+          totalPrice: item.totalPrice,
+          rentalType: item.rentalType!,
+          deliverySelected: item.deliverySelected!,
+          deliveryPrice: item.deliveryPrice!,
+          extras: (item.extras || []).map(cartExtra => ({
+            extraId: cartExtra.extra.id,
+            quantity: cartExtra.quantity,
+            totalPrice: cartExtra.totalPrice,
+            size: cartExtra.size,
+          })),
+        }));
       
       const dataToStore = JSON.stringify(storedItems);
       
@@ -135,6 +138,32 @@ export const [CartProvider, useCart] = createContextHook(() => {
       }
     }
   }, []);
+
+  const addSessionToCart = useCallback((session: Session, startDate: string, endDate: string, bookingTime?: string, participants: number = 1) => {
+    console.log('Cart addSessionToCart called with:', { sessionId: session.id, startDate, endDate, bookingTime, participants });
+    
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    const days = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+    
+    const totalPrice = session.price * participants;
+
+    const cartItem: CartItem = {
+      session,
+      startDate,
+      endDate,
+      days,
+      totalPrice,
+      bookingTime,
+      participants,
+    };
+
+    console.log('Created session cart item:', cartItem);
+
+    const newItems = [...cartItems, cartItem];
+    setCartItems(newItems);
+    console.log('Cart updated successfully with session');
+  }, [cartItems]);
 
   const addToCart = useCallback((board: Board, startDate: string, endDate: string, deliverySelected: boolean = false, extras: CartExtra[] = []) => {
     console.log('Cart addToCart called with:', { boardId: board.id, startDate, endDate, deliverySelected });
@@ -213,9 +242,9 @@ export const [CartProvider, useCart] = createContextHook(() => {
 
   const calculateDeliveryPricing = useCallback(() => {
     const deliveryItemsByOwner = cartItems
-      .filter(item => item.deliverySelected)
+      .filter(item => item.board && item.deliverySelected)
       .reduce((groups, item) => {
-        const ownerId = item.board.owner.id;
+        const ownerId = item.board!.owner.id;
         if (!groups[ownerId]) {
           groups[ownerId] = [];
         }
@@ -243,7 +272,7 @@ export const [CartProvider, useCart] = createContextHook(() => {
   const getTotalPrice = useCallback(() => {
     const rentalTotal = cartItems.reduce((sum, item) => sum + item.totalPrice, 0);
     const extrasTotal = cartItems.reduce((sum, item) => 
-      sum + item.extras.reduce((extraSum, extra) => extraSum + extra.totalPrice, 0), 0
+      sum + (item.extras || []).reduce((extraSum, extra) => extraSum + extra.totalPrice, 0), 0
     );
     const deliveryTotal = calculateDeliveryPricing();
     return rentalTotal + extrasTotal + deliveryTotal;
@@ -251,12 +280,12 @@ export const [CartProvider, useCart] = createContextHook(() => {
 
   const getDeliveryBreakdown = useCallback(() => {
     const deliveryItemsByOwner = cartItems
-      .filter(item => item.deliverySelected)
+      .filter(item => item.board && item.deliverySelected)
       .reduce((groups, item) => {
-        const ownerId = item.board.owner.id;
+        const ownerId = item.board!.owner.id;
         if (!groups[ownerId]) {
           groups[ownerId] = {
-            ownerName: item.board.owner.name,
+            ownerName: item.board!.owner.name,
             items: [],
             totalPrice: 0
           };
@@ -282,7 +311,7 @@ export const [CartProvider, useCart] = createContextHook(() => {
 
   const toggleDelivery = useCallback((index: number) => {
     const item = cartItems[index];
-    if (!item?.board.delivery_available) return;
+    if (!item?.board?.delivery_available) return;
     
     const deliverySelected = !item.deliverySelected;
     const deliveryPrice = deliverySelected ? item.board.delivery_price : 0;
@@ -312,8 +341,8 @@ export const [CartProvider, useCart] = createContextHook(() => {
       totalPrice = days * extra.pricePerDay * quantity;
     }
 
-    const existingExtraIndex = item.extras.findIndex(e => e.extra.id === extra.id);
-    let newExtras = [...item.extras];
+    const existingExtraIndex = (item.extras || []).findIndex(e => e.extra.id === extra.id);
+    let newExtras = [...(item.extras || [])];
     
     if (existingExtraIndex >= 0) {
       // Update existing extra
@@ -338,7 +367,7 @@ export const [CartProvider, useCart] = createContextHook(() => {
     const item = cartItems[itemIndex];
     if (!item) return;
 
-    const newExtras = item.extras.filter(e => e.extra.id !== extraId);
+    const newExtras = (item.extras || []).filter(e => e.extra.id !== extraId);
     updateCartItem(itemIndex, { extras: newExtras });
   }, [cartItems, updateCartItem]);
 
@@ -351,10 +380,10 @@ export const [CartProvider, useCart] = createContextHook(() => {
       return;
     }
 
-    const extraIndex = item.extras.findIndex(e => e.extra.id === extraId);
+    const extraIndex = (item.extras || []).findIndex(e => e.extra.id === extraId);
     if (extraIndex < 0) return;
 
-    const extra = item.extras[extraIndex].extra;
+    const extra = (item.extras || [])[extraIndex].extra;
     const days = item.days;
     const weeks = Math.floor(days / 7);
     const remainingDays = days % 7;
@@ -369,12 +398,12 @@ export const [CartProvider, useCart] = createContextHook(() => {
       totalPrice = days * extra.pricePerDay * quantity;
     }
 
-    const newExtras = [...item.extras];
+    const newExtras = [...(item.extras || [])];
     newExtras[extraIndex] = {
       extra,
       quantity,
       totalPrice,
-      size: newExtras[extraIndex].size, // Preserve existing size
+      size: newExtras[extraIndex].size,
     };
 
     updateCartItem(itemIndex, { extras: newExtras });
@@ -384,10 +413,10 @@ export const [CartProvider, useCart] = createContextHook(() => {
     const item = cartItems[itemIndex];
     if (!item) return;
 
-    const extraIndex = item.extras.findIndex(e => e.extra.id === extraId);
+    const extraIndex = (item.extras || []).findIndex(e => e.extra.id === extraId);
     if (extraIndex < 0) return;
 
-    const newExtras = [...item.extras];
+    const newExtras = [...(item.extras || [])];
     newExtras[extraIndex] = {
       ...newExtras[extraIndex],
       size,
@@ -400,6 +429,7 @@ export const [CartProvider, useCart] = createContextHook(() => {
     cartItems,
     isLoading,
     addToCart,
+    addSessionToCart,
     removeFromCart,
     updateCartItem,
     clearCart,
@@ -413,7 +443,7 @@ export const [CartProvider, useCart] = createContextHook(() => {
     updateExtraQuantity,
     updateExtraSize,
     availableExtras: AVAILABLE_EXTRAS,
-  }), [cartItems, isLoading, addToCart, removeFromCart, updateCartItem, clearCart, getTotalPrice, getItemCount, toggleDelivery, calculateDeliveryPricing, getDeliveryBreakdown, addExtraToItem, removeExtraFromItem, updateExtraQuantity, updateExtraSize]);
+  }), [cartItems, isLoading, addToCart, addSessionToCart, removeFromCart, updateCartItem, clearCart, getTotalPrice, getItemCount, toggleDelivery, calculateDeliveryPricing, getDeliveryBreakdown, addExtraToItem, removeExtraFromItem, updateExtraQuantity, updateExtraSize]);
 });
 
 export const useCartCount = () => {

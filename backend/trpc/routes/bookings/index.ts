@@ -27,15 +27,18 @@ const cartExtraSchema = z.object({
 });
 
 const cartItemSchema = z.object({
-  board: z.any(), // Board schema is complex, using any for now
+  board: z.any().optional(),
+  session: z.any().optional(),
   startDate: z.string(),
   endDate: z.string(),
   days: z.number(),
   totalPrice: z.number(),
-  rentalType: z.enum(['daily', 'weekly']),
-  deliverySelected: z.boolean(),
-  deliveryPrice: z.number(),
-  extras: z.array(cartExtraSchema),
+  rentalType: z.enum(['daily', 'weekly']).optional(),
+  deliverySelected: z.boolean().optional(),
+  deliveryPrice: z.number().optional(),
+  extras: z.array(cartExtraSchema).optional(),
+  bookingTime: z.string().optional(),
+  participants: z.number().optional(),
 });
 
 export const createBookingRoute = publicProcedure
@@ -47,7 +50,20 @@ export const createBookingRoute = publicProcedure
   }))
   .mutation(({ input }) => {
     console.log('Creating booking:', input);
-    return db.addBooking(input);
+    const bookingData = {
+      customerInfo: input.customerInfo,
+      orderItems: input.orderItems.map((item: any) => ({
+        ...item,
+        board: item.board || {},
+        rentalType: item.rentalType || 'daily',
+        deliverySelected: item.deliverySelected || false,
+        deliveryPrice: item.deliveryPrice || 0,
+        extras: item.extras || [],
+      })) as any,
+      totalAmount: input.totalAmount,
+      status: input.status,
+    };
+    return db.addBooking(bookingData);
   });
 
 export const getBookingsRoute = publicProcedure
@@ -101,10 +117,13 @@ export const exportAllBookingsRoute = publicProcedure
         status: booking.status,
         customerInfo: booking.customerInfo,
         orderItems: booking.orderItems.map(item => ({
-          boardId: item.board.id,
-          boardName: item.board.short_name,
-          boardType: item.board.type,
-          location: item.board.location,
+          boardId: item.board?.id,
+          boardName: item.board?.short_name,
+          boardType: item.board?.type,
+          location: item.board?.location,
+          sessionId: item.session?.id,
+          sessionName: item.session?.name,
+          sessionType: item.session?.type,
           startDate: item.startDate,
           endDate: item.endDate,
           days: item.days,
@@ -112,6 +131,8 @@ export const exportAllBookingsRoute = publicProcedure
           rentalType: item.rentalType,
           deliverySelected: item.deliverySelected,
           deliveryPrice: item.deliveryPrice,
+          bookingTime: item.bookingTime,
+          participants: item.participants,
           extras: item.extras
         })),
         totalAmount: booking.totalAmount

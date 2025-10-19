@@ -55,15 +55,18 @@ export interface CartExtra {
 }
 
 export interface CartItem {
-  board: Board;
+  board?: Board;
+  session?: any;
   startDate: string;
   endDate: string;
   days: number;
   totalPrice: number;
-  rentalType: 'daily' | 'weekly';
-  deliverySelected: boolean;
-  deliveryPrice: number;
-  extras: CartExtra[];
+  rentalType?: 'daily' | 'weekly';
+  deliverySelected?: boolean;
+  deliveryPrice?: number;
+  extras?: CartExtra[];
+  bookingTime?: string;
+  participants?: number;
 }
 
 export interface CheckoutInfo {

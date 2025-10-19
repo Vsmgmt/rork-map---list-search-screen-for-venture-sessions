@@ -45,7 +45,7 @@ function TabIcon({ color, children, badgeCount }: { color: string; children: Rea
 }
 
 export default function TabLayout() {
-  const { totalUnreadCount } = useMessages();
+  const { totalUnreadCount = 0 } = useMessages();
   
   return (
     <Tabs

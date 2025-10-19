@@ -22,6 +22,7 @@ export default function SessionPreviewModal() {
   const insets = useSafeAreaInsets();
   const { sessionId } = useLocalSearchParams<{ sessionId: string }>();
   const { getSessionById } = useSessions();
+  const { addSessionToCart } = useCart();
   
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
@@ -120,33 +121,36 @@ export default function SessionPreviewModal() {
   };
 
   const handleBookNow = () => {
+    if (!session) return;
+
     if (!bookingDate) {
       Alert.alert('Missing Information', 'Please select a date.');
       return;
     }
 
-    if (session?.type === 'camp' && !endDate) {
+    if (session.type === 'camp' && !endDate) {
       Alert.alert('Missing Information', 'Please select an end date for the camp.');
       return;
     }
 
-    if (session?.type !== 'camp' && !bookingTime) {
+    if (session.type !== 'camp' && !bookingTime) {
       Alert.alert('Missing Information', 'Please select a time.');
       return;
     }
 
-    console.log('Booking session:', {
-      sessionId: session?.id,
-      sessionName: session?.name,
-      type: session?.type,
-      date: bookingDate,
-      time: session?.type !== 'camp' ? bookingTime : undefined,
-      endDate: session?.type === 'camp' ? endDate : undefined,
-      participants,
-      totalPrice: session ? session.price * participants : 0,
-    });
+    const finalEndDate = session.type === 'camp' ? endDate : bookingDate;
+    const finalBookingTime = session.type !== 'camp' ? bookingTime : undefined;
 
-    router.push('/checkout');
+    addSessionToCart(session, bookingDate, finalEndDate, finalBookingTime, participants);
+
+    Alert.alert(
+      'Added to Cart',
+      `${session.name} has been added to your cart.`,
+      [
+        { text: 'Continue Browsing', style: 'cancel', onPress: () => router.back() },
+        { text: 'Go to Checkout', onPress: () => router.push('/checkout') },
+      ]
+    );
   };
 
   return (
