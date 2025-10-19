@@ -13,6 +13,7 @@ import { UserBackendProvider } from "@/src/context/user-backend";
 import { CartBackendProvider } from "@/src/context/cart-backend";
 import { UserProvider } from "@/src/context/user";
 import { MessagesProvider } from "@/src/context/messages";
+import { SessionsProvider } from "@/src/context/sessions";
 import { trpc, createTRPCClient } from "@/lib/trpc";
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
@@ -82,6 +83,15 @@ function RootLayoutNav() {
           headerShown: false,
         }} 
       />
+      <Stack.Screen 
+        name="session-preview" 
+        options={{ 
+          presentation: "modal",
+          headerShown: false,
+          gestureEnabled: true,
+          animation: "slide_from_bottom"
+        }} 
+      />
     </Stack>
   );
 }
@@ -102,13 +112,15 @@ export default function RootLayout() {
                   <BookingsBackendProvider>
                     <BoardsProvider>
                       <BoardsBackendProvider>
-                        <CartProvider>
-                          <CartBackendProvider>
-                            <GestureHandlerRootView style={{ flex: 1 }}>
-                              <RootLayoutNav />
-                            </GestureHandlerRootView>
-                          </CartBackendProvider>
-                        </CartProvider>
+                        <SessionsProvider>
+                          <CartProvider>
+                            <CartBackendProvider>
+                              <GestureHandlerRootView style={{ flex: 1 }}>
+                                <RootLayoutNav />
+                              </GestureHandlerRootView>
+                            </CartBackendProvider>
+                          </CartProvider>
+                        </SessionsProvider>
                       </BoardsBackendProvider>
                     </BoardsProvider>
                   </BookingsBackendProvider>

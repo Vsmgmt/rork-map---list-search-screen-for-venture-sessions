@@ -15,23 +15,31 @@ import {
 } from 'react-native';
 import DatePicker from '@/components/DatePicker';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ShoppingCart, X, MapPin, Info, Truck } from 'lucide-react-native';
+import { ShoppingCart, X, MapPin, Info, Truck, GraduationCap } from 'lucide-react-native';
 import { router } from 'expo-router';
 import { lonLatToXY, jitterOverlappingMarkers, calculateDistance } from '@/src/util/geo';
 import { useCart } from '@/src/context/cart';
 import { useBoardsBackend } from '@/src/context/boards-backend';
+import { useSessions } from '@/src/context/sessions';
 import { Board, BoardType } from '@/src/types/board';
+import { Session, SessionType, SessionLevel } from '@/src/types/session';
 
 const WORLD_MAP_URL = 'https://images.unsplash.com/photo-1526778548025-fa2f459cd5c1?w=2000&h=1000&fit=crop';
 const MARKER_URL = 'https://cdn-icons-png.flaticon.com/32/684/684908.png';
+const SESSION_MARKER_URL = 'https://cdn-icons-png.flaticon.com/32/3656/3656890.png';
 
 const MAP_INTRINSIC_WIDTH = 2000;
 const MAP_INTRINSIC_HEIGHT = 1000;
+
+type ViewMode = 'boards' | 'sessions';
 
 export default function MapScreen() {
   const insets = useSafeAreaInsets();
   const { addToCart, getItemCount, cartItems } = useCart();
   const { boards: backendBoards, isLoading: loadingBoards } = useBoardsBackend();
+  const { sessions: allSessions, filterSessions } = useSessions();
+  
+  const [viewMode, setViewMode] = useState<ViewMode>('boards');
   const [boards, setBoards] = useState<Board[]>([]);
   const [filtered, setFiltered] = useState<Board[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -41,7 +49,12 @@ export default function MapScreen() {
   const [clickedLocation, setClickedLocation] = useState<{ lat: number; lon: number; locationName: string } | null>(null);
   const [showInfoBubble, setShowInfoBubble] = useState(false);
   const [randomBoards, setRandomBoards] = useState<Board[]>([]);
-
+  
+  const [sessions, setSessions] = useState<Session[]>([]);
+  const [filteredSessions, setFilteredSessions] = useState<Session[]>([]);
+  const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
+  const [nearbySessions, setNearbySessions] = useState<(Session & { distance: number })[]>([]);
+  const [randomSessions, setRandomSessions] = useState<Session[]>([]);
   
   // Filter inputs
   const [startDate, setStartDate] = useState('');
@@ -49,6 +62,8 @@ export default function MapScreen() {
   const [location, setLocation] = useState('');
   const [keyword, setKeyword] = useState('');
   const [selectedBoardType, setSelectedBoardType] = useState<BoardType | ''>('');
+  const [selectedSessionType, setSelectedSessionType] = useState<SessionType | ''>('');
+  const [selectedSessionLevel, setSelectedSessionLevel] = useState<SessionLevel | ''>('');
   const [showDropdown, setShowDropdown] = useState(false);
   
   // Map dimensions
@@ -316,6 +331,27 @@ export default function MapScreen() {
             )}
           </Pressable>
         </View>
+      </View>
+      
+      {/* View Mode Toggle */}
+      <View style={styles.toggleContainer}>
+        <Pressable
+          style={[styles.toggleButton, viewMode === 'boards' && styles.toggleButtonActive]}
+          onPress={() => setViewMode('boards')}
+        >
+          <Text style={[styles.toggleButtonText, viewMode === 'boards' && styles.toggleButtonTextActive]}>
+            Boards
+          </Text>
+        </Pressable>
+        <Pressable
+          style={[styles.toggleButton, viewMode === 'sessions' && styles.toggleButtonActive]}
+          onPress={() => setViewMode('sessions')}
+        >
+          <GraduationCap size={16} color={viewMode === 'sessions' ? '#fff' : '#007AFF'} />
+          <Text style={[styles.toggleButtonText, viewMode === 'sessions' && styles.toggleButtonTextActive]}>
+            Sessions
+          </Text>
+        </Pressable>
       </View>
       
       {/* Filter Bar */}
@@ -713,6 +749,39 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: 12,
     fontWeight: 'bold',
+  },
+  toggleContainer: {
+    flexDirection: 'row',
+    backgroundColor: 'white',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    gap: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e0e0e0',
+  },
+  toggleButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#007AFF',
+    backgroundColor: 'white',
+  },
+  toggleButtonActive: {
+    backgroundColor: '#007AFF',
+  },
+  toggleButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#007AFF',
+  },
+  toggleButtonTextActive: {
+    color: 'white',
   },
   filterBar: {
     backgroundColor: 'white',
