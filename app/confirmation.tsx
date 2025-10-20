@@ -20,7 +20,10 @@ import {
   Truck,
   Share2,
   ArrowLeft,
-  Clock
+  Clock,
+  Backpack,
+  AlertCircle,
+  Info
 } from 'lucide-react-native';
 import { CartItem, CheckoutInfo } from '@/src/types/board';
 import Colors from '@/constants/colors';
@@ -135,6 +138,8 @@ export default function ConfirmationScreen() {
     }
   };
 
+  const hasOnlySessionItems = orderItems.every(item => !!item.session);
+
   const handleShare = async () => {
     const receiptText = `
 🏄‍♂️ VENTURE SESSIONS - BOOKING CONFIRMATION
@@ -148,24 +153,24 @@ Email: ${customerInfo.email}
 Phone: ${customerInfo.phone}
 
 📋 ORDER DETAILS
-${orderItems.map((item, index) => 
-  `${index + 1}. ${item.board.short_name}
+${orderItems.map((item, index) => {
+  if (item.session) {
+    return `${index + 1}. ${item.session.name} (${item.session.type})
+   ${formatDate(item.startDate)} - ${formatDate(item.endDate)}
+   ${item.bookingTime ? `Time: ${item.bookingTime}` : ''}
+   Price: ${item.totalPrice}`;
+  } else if (item.board) {
+    return `${index + 1}. ${item.board.short_name}
    ${item.board.dimensions_detail}
    ${formatDate(item.startDate)} - ${formatDate(item.endDate)} (${item.days} days)
-   Price: $${item.totalPrice}${item.deliverySelected ? ` + Delivery: $${item.deliveryPrice}` : ''}`
-).join('\n\n')}
+   Price: ${item.totalPrice}${item.deliverySelected ? ` + Delivery: ${item.deliveryPrice}` : ''}`;
+  }
+  return '';
+}).filter(Boolean).join('\n\n')}
 
-💰 TOTAL: $${totalAmount}
+💰 TOTAL: ${totalAmount}
 
-⏰ PICKUP & RETURN
-Pickup Time: ${customerInfo.pickupTime}
-Return Time: ${customerInfo.returnTime}
-
-📍 PICKUP LOCATIONS
-${Array.from(new Set(orderItems.filter(item => !item.deliverySelected).map(item => item.board.pickup_spot))).join('\n')}
-
-${orderItems.some(item => item.deliverySelected) ? `🚚 DELIVERY ADDRESS\n${customerInfo.deliveryAddress}\n\n` : ''}${customerInfo.notes ? `📝 NOTES\n${customerInfo.notes}\n\n` : ''}💳 Payment will be collected at pickup.
-We accept cash, card, and digital payments.
+${!hasOnlySessionItems ? `⏰ PICKUP & RETURN\nPickup Time: ${customerInfo.pickupTime}\nReturn Time: ${customerInfo.returnTime}\n\n` : ''}${!hasOnlySessionItems ? `📍 PICKUP LOCATIONS\n${Array.from(new Set(orderItems.filter(item => !item.deliverySelected && item.board).map(item => item.board!.pickup_spot))).join('\n')}\n\n` : ''}${hasOnlySessionItems ? `📍 MEETING LOCATION\nSouth end of Haleiwa Beach Park (look for lifeguard tower)\n\n` : ''}${orderItems.some(item => item.deliverySelected) ? `🚚 DELIVERY ADDRESS\n${customerInfo.deliveryAddress}\n\n` : ''}${customerInfo.notes ? `📝 NOTES\n${customerInfo.notes}\n\n` : ''}💳 Payment has been processed online.
 
 Thank you for choosing Venture Sessions!
     `;
@@ -199,7 +204,7 @@ Thank you for choosing Venture Sessions!
           </View>
           <Text style={styles.successTitle}>Booking Confirmed!</Text>
           <Text style={styles.successSubtitle}>
-            Thank you {customerInfo.firstName}! Your surfboard rental has been confirmed.
+            Thank you {customerInfo.firstName}! Your {hasOnlySessionItems ? 'session booking' : 'surfboard rental'} has been confirmed.
           </Text>
           <View style={styles.confirmationBox}>
             <Text style={styles.confirmationLabel}>Confirmation Number</Text>
@@ -226,72 +231,88 @@ Thank you for choosing Venture Sessions!
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Order Details</Text>
-          {orderItems.map((item, index) => (
-            <View key={`${item.board.id}-${index}`} style={styles.orderItem}>
-              <View style={styles.itemInfo}>
-                <Text style={styles.boardName}>{item.board.short_name}</Text>
-                <Text style={styles.boardDetails}>{item.board.dimensions_detail}</Text>
-                <View style={styles.rentalInfo}>
-                  <Text style={styles.rentalText}>
-                    {formatDate(item.startDate)} - {formatDate(item.endDate)} ({item.days} days)
-                  </Text>
-                  <View style={[styles.typeBadge, { backgroundColor: getTypeColor(item.board.type) }]}>
-                    <Text style={styles.typeText}>
-                      {item.board.type.charAt(0).toUpperCase() + item.board.type.slice(1)}
+          {orderItems.map((item, index) => {
+            const isSession = !!item.session;
+            const itemId = isSession ? item.session!.id : (item.board?.id || `item-${index}`);
+            const itemName = isSession ? item.session!.name : (item.board?.short_name || 'Unknown');
+            const itemDetails = isSession 
+              ? `${item.session!.type.charAt(0).toUpperCase() + item.session!.type.slice(1)} • ${item.session!.level}`
+              : (item.board?.dimensions_detail || '');
+            const itemType = isSession ? item.session!.type : (item.board?.type || 'unknown');
+            
+            return (
+              <View key={`${itemId}-${index}`} style={styles.orderItem}>
+                <View style={styles.itemInfo}>
+                  <Text style={styles.boardName}>{itemName}</Text>
+                  <Text style={styles.boardDetails}>{itemDetails}</Text>
+                  <View style={styles.rentalInfo}>
+                    <Text style={styles.rentalText}>
+                      {formatDate(item.startDate)}{!isSession && ` - ${formatDate(item.endDate)} (${item.days} days)`}
+                      {isSession && item.bookingTime && ` • ${item.bookingTime}`}
+                      {isSession && item.participants && ` • ${item.participants} participant${item.participants > 1 ? 's' : ''}`}
                     </Text>
+                    <View style={[styles.typeBadge, { backgroundColor: getTypeColor(itemType) }]}>
+                      <Text style={styles.typeText}>
+                        {itemType.charAt(0).toUpperCase() + itemType.slice(1)}
+                      </Text>
+                    </View>
                   </View>
+                  {!isSession && item.deliverySelected && (
+                    <View style={styles.deliveryInfo}>
+                      <Truck size={16} color={Colors.light.tint} />
+                      <Text style={styles.deliveryText}>Delivery included (+${item.deliveryPrice})</Text>
+                    </View>
+                  )}
                 </View>
-                {item.deliverySelected && (
-                  <View style={styles.deliveryInfo}>
-                    <Truck size={16} color={Colors.light.tint} />
-                    <Text style={styles.deliveryText}>Delivery included (+${item.deliveryPrice})</Text>
-                  </View>
-                )}
+                <View style={styles.priceContainer}>
+                  <Text style={styles.itemPrice}>${item.totalPrice}</Text>
+                  {!isSession && item.deliverySelected && (
+                    <Text style={styles.deliveryPrice}>+${item.deliveryPrice}</Text>
+                  )}
+                </View>
               </View>
-              <View style={styles.priceContainer}>
-                <Text style={styles.itemPrice}>${item.totalPrice}</Text>
-                {item.deliverySelected && (
-                  <Text style={styles.deliveryPrice}>+${item.deliveryPrice}</Text>
-                )}
-              </View>
-            </View>
-          ))}
+            );
+          })}
           <View style={styles.totalRow}>
             <Text style={styles.totalLabel}>Total Amount:</Text>
             <Text style={styles.totalAmount}>${totalAmount}</Text>
           </View>
         </View>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Pickup & Return Times</Text>
-          <View style={styles.infoRow}>
-            <Clock size={20} color={Colors.light.tint} />
-            <View style={styles.timeInfo}>
-              <Text style={styles.timeLabel}>Pickup Time:</Text>
-              <Text style={styles.timeText}>{customerInfo.pickupTime}</Text>
+        {!hasOnlySessionItems && (
+          <>
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Pickup & Return Times</Text>
+              <View style={styles.infoRow}>
+                <Clock size={20} color={Colors.light.tint} />
+                <View style={styles.timeInfo}>
+                  <Text style={styles.timeLabel}>Pickup Time:</Text>
+                  <Text style={styles.timeText}>{customerInfo.pickupTime}</Text>
+                </View>
+              </View>
+              <View style={styles.infoRow}>
+                <Clock size={20} color={Colors.light.tint} />
+                <View style={styles.timeInfo}>
+                  <Text style={styles.timeLabel}>Return Time:</Text>
+                  <Text style={styles.timeText}>{customerInfo.returnTime}</Text>
+                </View>
+              </View>
             </View>
-          </View>
-          <View style={styles.infoRow}>
-            <Clock size={20} color={Colors.light.tint} />
-            <View style={styles.timeInfo}>
-              <Text style={styles.timeLabel}>Return Time:</Text>
-              <Text style={styles.timeText}>{customerInfo.returnTime}</Text>
-            </View>
-          </View>
-        </View>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Pickup Locations</Text>
-          {Array.from(new Set(orderItems.filter(item => !item.deliverySelected).map(item => item.board.pickup_spot))).map((location) => (
-            <View key={location} style={styles.infoRow}>
-              <MapPin size={20} color={Colors.light.tint} />
-              <Text style={styles.infoText}>{location}</Text>
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Pickup Locations</Text>
+              {Array.from(new Set(orderItems.filter(item => !item.deliverySelected && item.board).map(item => item.board!.pickup_spot))).map((location) => (
+                <View key={location} style={styles.infoRow}>
+                  <MapPin size={20} color={Colors.light.tint} />
+                  <Text style={styles.infoText}>{location}</Text>
+                </View>
+              ))}
+              {orderItems.every(item => item.deliverySelected || !item.board) && (
+                <Text style={styles.noPickupText}>All items will be delivered</Text>
+              )}
             </View>
-          ))}
-          {orderItems.every(item => item.deliverySelected) && (
-            <Text style={styles.noPickupText}>All items will be delivered</Text>
-          )}
-        </View>
+          </>
+        )}
 
         {orderItems.some(item => item.deliverySelected) && customerInfo.deliveryAddress && (
           <View style={styles.section}>
@@ -316,7 +337,7 @@ Thank you for choosing Venture Sessions!
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Payment Information</Text>
           <Text style={styles.paymentNote}>
-            💳 Payment will be collected at pickup. We accept cash, card, and digital payments.
+            💳 Payment has been processed successfully online.
           </Text>
           <Text style={styles.importantNote}>
             📧 A confirmation email has been sent to {customerInfo.email} with all the details above.
@@ -324,13 +345,94 @@ Thank you for choosing Venture Sessions!
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>What&apos;s Next?</Text>
-          <Text style={styles.nextStepsText}>
-            • Arrive at the pickup location at your scheduled time{"\n"}
-            • Bring a valid ID and payment method{"\n"}
-            • Our team will have your boards ready to go{"\n"}
-            • Enjoy your surf session!
-          </Text>
+          <View style={styles.sectionHeader}>
+            <MapPin size={24} color={Colors.light.tint} />
+            <Text style={[styles.sectionTitle, { marginBottom: 0 }]}>Meeting Location</Text>
+          </View>
+          <View style={styles.directionsBox}>
+            <Text style={styles.directionsText}>
+              We meet on the south end of Haleiwa Beach Park. Look for the lifeguard tower.
+            </Text>
+          </View>
+        </View>
+
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Backpack size={24} color={Colors.light.tint} />
+            <Text style={[styles.sectionTitle, { marginBottom: 0 }]}>What to Bring</Text>
+          </View>
+          <View style={styles.bulletList}>
+            <View style={styles.bulletItem}>
+              <View style={styles.bullet} />
+              <Text style={styles.bulletText}>Valid ID and payment method</Text>
+            </View>
+            <View style={styles.bulletItem}>
+              <View style={styles.bullet} />
+              <Text style={styles.bulletText}>Swimwear and towel</Text>
+            </View>
+            <View style={styles.bulletItem}>
+              <View style={styles.bullet} />
+              <Text style={styles.bulletText}>Sunscreen (reef-safe preferred)</Text>
+            </View>
+            <View style={styles.bulletItem}>
+              <View style={styles.bullet} />
+              <Text style={styles.bulletText}>Water bottle to stay hydrated</Text>
+            </View>
+            <View style={styles.bulletItem}>
+              <View style={styles.bullet} />
+              <Text style={styles.bulletText}>Positive attitude and stoke!</Text>
+            </View>
+          </View>
+        </View>
+
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <AlertCircle size={24} color={Colors.light.tint} />
+            <Text style={[styles.sectionTitle, { marginBottom: 0 }]}>Important Information</Text>
+          </View>
+          <View style={styles.bulletList}>
+            <View style={styles.bulletItem}>
+              <View style={styles.bullet} />
+              <Text style={styles.bulletText}>Please arrive 10 minutes before your scheduled time</Text>
+            </View>
+            <View style={styles.bulletItem}>
+              <View style={styles.bullet} />
+              <Text style={styles.bulletText}>All equipment will be provided</Text>
+            </View>
+            <View style={styles.bulletItem}>
+              <View style={styles.bullet} />
+              <Text style={styles.bulletText}>Cancellations must be made 24 hours in advance</Text>
+            </View>
+            <View style={styles.bulletItem}>
+              <View style={styles.bullet} />
+              <Text style={styles.bulletText}>Weather conditions will be monitored for safety</Text>
+            </View>
+          </View>
+        </View>
+
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Info size={24} color={Colors.light.tint} />
+            <Text style={[styles.sectionTitle, { marginBottom: 0 }]}>What&apos;s Next?</Text>
+          </View>
+          <View style={styles.bulletList}>
+            <View style={styles.bulletItem}>
+              <View style={styles.bullet} />
+              <Text style={styles.bulletText}>Arrive at the meeting location at your scheduled time</Text>
+            </View>
+            <View style={styles.bulletItem}>
+              <View style={styles.bullet} />
+              <Text style={styles.bulletText}>Check in with our team at the lifeguard tower</Text>
+            </View>
+            <View style={styles.bulletItem}>
+              <View style={styles.bullet} />
+              <Text style={styles.bulletText}>Our team will have your boards ready to go</Text>
+            </View>
+            <View style={styles.bulletItem}>
+              <View style={styles.bullet} />
+              <Text style={styles.bulletText}>Enjoy your surf session!</Text>
+            </View>
+          </View>
         </View>
       </ScrollView>
 
@@ -582,6 +684,46 @@ const styles = StyleSheet.create({
   },
   nextStepsText: {
     fontSize: 14,
+    color: '#495057',
+    lineHeight: 22,
+  },
+  sectionHeader: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: 12,
+    marginBottom: 16,
+  },
+  directionsBox: {
+    padding: 16,
+    backgroundColor: '#e3f2fd',
+    borderRadius: 8,
+    borderLeftWidth: 4,
+    borderLeftColor: Colors.light.tint,
+  },
+  directionsText: {
+    fontSize: 15,
+    color: '#212529',
+    lineHeight: 22,
+    fontWeight: '500' as const,
+  },
+  bulletList: {
+    gap: 12,
+  },
+  bulletItem: {
+    flexDirection: 'row' as const,
+    alignItems: 'flex-start' as const,
+    gap: 12,
+  },
+  bullet: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: Colors.light.tint,
+    marginTop: 7,
+  },
+  bulletText: {
+    flex: 1,
+    fontSize: 15,
     color: '#495057',
     lineHeight: 22,
   },
