@@ -239,24 +239,28 @@ export default function MapScreen() {
   
   const markerPositions = useMemo(() => {
     if (viewMode === 'boards') {
-      const positions = filtered.map(board => {
-        const { x, y } = lonLatToXY(board.lon, board.lat, MAP_INTRINSIC_WIDTH, MAP_INTRINSIC_HEIGHT);
-        return {
-          x: (x / MAP_INTRINSIC_WIDTH) * mapWidth,
-          y: (y / MAP_INTRINSIC_HEIGHT) * mapHeight,
-          id: board.id
-        };
-      });
+      const positions = filtered
+        .filter(board => board && board.id && board.lat != null && board.lon != null)
+        .map(board => {
+          const { x, y } = lonLatToXY(board.lon, board.lat, MAP_INTRINSIC_WIDTH, MAP_INTRINSIC_HEIGHT);
+          return {
+            x: (x / MAP_INTRINSIC_WIDTH) * mapWidth,
+            y: (y / MAP_INTRINSIC_HEIGHT) * mapHeight,
+            id: board.id
+          };
+        });
       return jitterOverlappingMarkers(positions);
     } else {
-      const positions = filteredSessions.map(session => {
-        const { x, y } = lonLatToXY(session.lon, session.lat, MAP_INTRINSIC_WIDTH, MAP_INTRINSIC_HEIGHT);
-        return {
-          x: (x / MAP_INTRINSIC_WIDTH) * mapWidth,
-          y: (y / MAP_INTRINSIC_HEIGHT) * mapHeight,
-          id: session.id
-        };
-      });
+      const positions = filteredSessions
+        .filter(session => session && session.id && session.lat != null && session.lon != null)
+        .map(session => {
+          const { x, y } = lonLatToXY(session.lon, session.lat, MAP_INTRINSIC_WIDTH, MAP_INTRINSIC_HEIGHT);
+          return {
+            x: (x / MAP_INTRINSIC_WIDTH) * mapWidth,
+            y: (y / MAP_INTRINSIC_HEIGHT) * mapHeight,
+            id: session.id
+          };
+        });
       return jitterOverlappingMarkers(positions);
     }
   }, [viewMode, filtered, filteredSessions, mapWidth, mapHeight]);
@@ -321,7 +325,7 @@ export default function MapScreen() {
   const selectedSession = selectedSessionId ? filteredSessions.find(s => s.id === selectedSessionId) : null;
   
   const isBoardInCart = (boardId: string) => {
-    return cartItems.some(item => item.board.id === boardId);
+    return cartItems.some(item => item.board?.id === boardId);
   };
 
   const handleAddToCart = (board: Board) => {
@@ -635,7 +639,7 @@ export default function MapScreen() {
               {markerPositions.map((pos) => {
                 if (viewMode === 'boards') {
                   const board = filtered.find(b => b.id === pos.id);
-                  if (!board) return null;
+                  if (!board || !board.id) return null;
                   
                   const isSelected = board.id === selectedId;
                   
@@ -663,7 +667,7 @@ export default function MapScreen() {
                   );
                 } else {
                   const session = filteredSessions.find(s => s.id === pos.id);
-                  if (!session) return null;
+                  if (!session || !session.id) return null;
                   
                   const isSelected = session.id === selectedSessionId;
                   
