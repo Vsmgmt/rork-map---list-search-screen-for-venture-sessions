@@ -324,6 +324,18 @@ export default function CheckoutScreen() {
           </View>
         )}
 
+        {hasOnlySessionItems && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Meeting Location</Text>
+            <View style={styles.directionsBox}>
+              <MapPin size={20} color={Colors.light.tint} />
+              <Text style={styles.directionsText}>
+                We meet on the south end of Haleiwa Beach Park. Look for the lifeguard tower.
+              </Text>
+            </View>
+          </View>
+        )}
+
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>{hasOnlySessionItems ? 'Additional Notes' : 'Additional Information'}</Text>
           
@@ -669,5 +681,21 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: 18,
     fontWeight: '600' as const,
+  },
+  directionsBox: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    padding: 16,
+    backgroundColor: '#f0f8ff',
+    borderRadius: 8,
+    borderLeftWidth: 4,
+    borderLeftColor: Colors.light.tint,
+  },
+  directionsText: {
+    flex: 1,
+    marginLeft: 12,
+    fontSize: 15,
+    color: '#212529',
+    lineHeight: 22,
   },
 });
