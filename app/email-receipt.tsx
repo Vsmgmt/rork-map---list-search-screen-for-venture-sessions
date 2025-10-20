@@ -108,52 +108,6 @@ export default function EmailReceiptScreen() {
         </View>
         
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Send Receipt via Email</Text>
-          <Text style={styles.sectionDescription}>
-            Enter your email address to receive a detailed receipt of your booking.
-          </Text>
-          
-          <View style={styles.inputContainer}>
-            <Mail size={20} color="#6c757d" />
-            <TextInput
-              style={styles.input}
-              placeholder="Enter your email address"
-              value={email}
-              onChangeText={setEmail}
-              keyboardType="email-address"
-              autoCapitalize="none"
-              editable={!emailSent}
-            />
-          </View>
-          
-          <Pressable 
-            style={[
-              styles.sendButton, 
-              (isSending || emailSent) && styles.sendButtonDisabled
-            ]} 
-            onPress={handleSendReceipt}
-            disabled={isSending || emailSent}
-          >
-            {isSending ? (
-              <>
-                <ActivityIndicator size="small" color="white" />
-                <Text style={styles.sendButtonText}>Sending...</Text>
-              </>
-            ) : emailSent ? (
-              <>
-                <CheckCircle size={20} color="white" />
-                <Text style={styles.sendButtonText}>Receipt Sent</Text>
-              </>
-            ) : (
-              <>
-                <Send size={20} color="white" />
-                <Text style={styles.sendButtonText}>Send Receipt</Text>
-              </>
-            )}
-          </Pressable>
-        </View>
-        
-        <View style={styles.section}>
           <Text style={styles.sectionTitle}>Booking Summary</Text>
           
           <View style={styles.summaryRow}>
@@ -319,6 +273,52 @@ export default function EmailReceiptScreen() {
               Contact us if you need to make any changes or have questions
             </Text>
           </View>
+        </View>
+
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Send Receipt via Email</Text>
+          <Text style={styles.sectionDescription}>
+            Enter your email address to receive a detailed receipt of your booking.
+          </Text>
+          
+          <View style={styles.inputContainer}>
+            <Mail size={20} color="#6c757d" />
+            <TextInput
+              style={styles.input}
+              placeholder="Enter your email address"
+              value={email}
+              onChangeText={setEmail}
+              keyboardType="email-address"
+              autoCapitalize="none"
+              editable={!emailSent}
+            />
+          </View>
+          
+          <Pressable 
+            style={[
+              styles.sendButton, 
+              (isSending || emailSent) && styles.sendButtonDisabled
+            ]} 
+            onPress={handleSendReceipt}
+            disabled={isSending || emailSent}
+          >
+            {isSending ? (
+              <>
+                <ActivityIndicator size="small" color="white" />
+                <Text style={styles.sendButtonText}>Sending...</Text>
+              </>
+            ) : emailSent ? (
+              <>
+                <CheckCircle size={20} color="white" />
+                <Text style={styles.sendButtonText}>Receipt Sent</Text>
+              </>
+            ) : (
+              <>
+                <Send size={20} color="white" />
+                <Text style={styles.sendButtonText}>Send Receipt</Text>
+              </>
+            )}
+          </Pressable>
         </View>
       </ScrollView>
       
