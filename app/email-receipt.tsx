@@ -170,15 +170,19 @@ export default function EmailReceiptScreen() {
             <Text style={styles.summaryValue}>{customerInfo.phone}</Text>
           </View>
           
-          <View style={styles.summaryRow}>
-            <Text style={styles.summaryLabel}>Pickup Time:</Text>
-            <Text style={styles.summaryValue}>{customerInfo.pickupTime}</Text>
-          </View>
+          {customerInfo.pickupTime && (
+            <View style={styles.summaryRow}>
+              <Text style={styles.summaryLabel}>Pickup Time:</Text>
+              <Text style={styles.summaryValue}>{customerInfo.pickupTime}</Text>
+            </View>
+          )}
           
-          <View style={styles.summaryRow}>
-            <Text style={styles.summaryLabel}>Return Time:</Text>
-            <Text style={styles.summaryValue}>{customerInfo.returnTime}</Text>
-          </View>
+          {customerInfo.returnTime && (
+            <View style={styles.summaryRow}>
+              <Text style={styles.summaryLabel}>Return Time:</Text>
+              <Text style={styles.summaryValue}>{customerInfo.returnTime}</Text>
+            </View>
+          )}
           
           {customerInfo.deliveryAddress && (
             <View style={styles.summaryRow}>
@@ -197,36 +201,53 @@ export default function EmailReceiptScreen() {
         
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Order Details</Text>
-          {orderItems.map((item: any, index: number) => (
-            <View key={`${item.board.id}-${index}`} style={styles.orderItem}>
-              <View style={styles.itemInfo}>
-                <Text style={styles.boardName}>{item.board.short_name}</Text>
-                <Text style={styles.boardDetails}>{item.board.dimensions_detail}</Text>
-                <View style={styles.rentalInfo}>
-                  <Text style={styles.rentalText}>
-                    {formatDate(item.startDate)} - {formatDate(item.endDate)} ({item.days} days)
-                  </Text>
-                  <View style={[styles.typeBadge, { backgroundColor: getTypeColor(item.board.type) }]}>
-                    <Text style={styles.typeText}>
-                      {item.board.type.charAt(0).toUpperCase() + item.board.type.slice(1)}
-                    </Text>
+          {orderItems.map((item: any, index: number) => {
+            const isSession = item.session || item.board?.type === 'lesson' || item.board?.type === 'tour' || item.board?.type === 'camp' || item.board?.type === 'session';
+            const bookingItem = item.session || item.board;
+            const itemName = bookingItem?.short_name || bookingItem?.name || 'Unknown Item';
+            const itemDetails = isSession 
+              ? `${bookingItem?.level || ''} · ${bookingItem?.duration || 0} min`
+              : bookingItem?.dimensions_detail || '';
+            
+            return (
+              <View key={`${bookingItem?.id}-${index}`} style={styles.orderItem}>
+                <View style={styles.itemInfo}>
+                  <Text style={styles.boardName}>{itemName}</Text>
+                  {itemDetails && <Text style={styles.boardDetails}>{itemDetails}</Text>}
+                  <View style={styles.rentalInfo}>
+                    {!isSession && item.startDate && item.endDate ? (
+                      <Text style={styles.rentalText}>
+                        {formatDate(item.startDate)} - {formatDate(item.endDate)} ({item.days} days)
+                      </Text>
+                    ) : isSession && item.sessionDate && item.sessionTime ? (
+                      <Text style={styles.rentalText}>
+                        {formatDate(item.sessionDate)} at {item.sessionTime}
+                      </Text>
+                    ) : null}
+                    {bookingItem?.type && (
+                      <View style={[styles.typeBadge, { backgroundColor: getTypeColor(bookingItem.type) }]}>
+                        <Text style={styles.typeText}>
+                          {bookingItem.type.charAt(0).toUpperCase() + bookingItem.type.slice(1)}
+                        </Text>
+                      </View>
+                    )}
                   </View>
+                  {item.deliverySelected && (
+                    <View style={styles.deliveryInfo}>
+                      <Truck size={14} color={Colors.light.tint} />
+                      <Text style={styles.deliveryText}>Delivery included</Text>
+                    </View>
+                  )}
                 </View>
-                {item.deliverySelected && (
-                  <View style={styles.deliveryInfo}>
-                    <Truck size={14} color={Colors.light.tint} />
-                    <Text style={styles.deliveryText}>Delivery included</Text>
-                  </View>
-                )}
+                <View style={styles.priceContainer}>
+                  <Text style={styles.itemPrice}>${item.totalPrice}</Text>
+                  {item.deliverySelected && (
+                    <Text style={styles.deliveryPrice}>+${item.deliveryPrice}</Text>
+                  )}
+                </View>
               </View>
-              <View style={styles.priceContainer}>
-                <Text style={styles.itemPrice}>${item.totalPrice}</Text>
-                {item.deliverySelected && (
-                  <Text style={styles.deliveryPrice}>+${item.deliveryPrice}</Text>
-                )}
-              </View>
-            </View>
-          ))}
+            );
+          })}
           
           <View style={styles.totalRow}>
             <Text style={styles.totalLabel}>Total Paid:</Text>
