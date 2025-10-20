@@ -12,55 +12,29 @@ export const [MessagesBackendProvider, useMessagesBackendInternal] = createConte
   // Get local messages as fallback
   const localMessages = useMessages();
   
-  // Test tRPC connection first
-  const testQuery = trpc.testMessages.useQuery(
-    { userId: currentUser?.id || 'test-user' },
+  // Use tRPC to fetch conversations
+  const conversationsQuery = trpc.messages.getConversations.useQuery(
+    { userId: currentUser?.id || '' },
     {
       enabled: !!currentUser && backendAvailable,
       refetchOnWindowFocus: false,
       staleTime: 1 * 60 * 1000, // 1 minute
       retry: (failureCount: number, error: any) => {
-        console.log('tRPC test query error:', error?.message);
-        console.log('Full error:', error);
-        if (error?.message?.includes('fetch') || 
-            error?.message?.includes('Failed to fetch') ||
-            error?.message?.includes('Network error') ||
-            error?.message?.includes('timeout') ||
-            error?.message?.includes('404') ||
-            error?.message?.includes('No procedure found')) {
-          console.log('Backend not available or procedure not found, using local messages fallback');
+        const errorMsg = error?.message || '';
+        if (errorMsg.includes('fetch') || 
+            errorMsg.includes('Failed to fetch') ||
+            errorMsg.includes('Network error') ||
+            errorMsg.includes('timeout') ||
+            errorMsg.includes('404') ||
+            errorMsg.includes('Not Found') ||
+            errorMsg.includes('No procedure found')) {
+          console.log('Backend not available, using local messages fallback');
           setBackendAvailable(false);
           return false;
         }
         return failureCount < 2;
       },
-      retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 5000),
-    }
-  );
-
-  // Use tRPC to fetch conversations
-  const conversationsQuery = trpc.messages.getConversations.useQuery(
-    { userId: currentUser?.id || '' },
-    {
-      enabled: !!currentUser && backendAvailable && testQuery.isSuccess,
-      refetchOnWindowFocus: false,
-      staleTime: 1 * 60 * 1000, // 1 minute
-      retry: (failureCount: number, error: any) => {
-        console.log('tRPC conversations query error:', error?.message);
-        console.log('Full error:', error);
-        if (error?.message?.includes('fetch') || 
-            error?.message?.includes('Failed to fetch') ||
-            error?.message?.includes('Network error') ||
-            error?.message?.includes('timeout') ||
-            error?.message?.includes('404') ||
-            error?.message?.includes('No procedure found')) {
-          console.log('Backend not available or procedure not found, using local messages fallback');
-          setBackendAvailable(false);
-          return false;
-        }
-        return failureCount < 2;
-      },
-      retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 5000),
+      retryDelay: (attemptIndex: number) => Math.min(1000 * 2 ** attemptIndex, 5000),
     }
   );
 

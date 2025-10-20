@@ -71,6 +71,8 @@ export const [UserBackendProvider, useUserBackendInternal] = createContextHook((
           errorMessage.includes('Failed to fetch') ||
           errorMessage.includes('Network error') ||
           errorMessage.includes('timeout') ||
+          errorMessage.includes('404') ||
+          errorMessage.includes('Not Found') ||
           errorMessage.includes('tRPC endpoint not found') ||
           (errorMessage.includes('Unexpected token') && errorMessage.includes('<!DOCTYPE'))) {
         console.log('Backend not available for pro users');

@@ -13,14 +13,17 @@ export const [BookingsBackendProvider, useBookingsBackendInternal] = createConte
   // Use tRPC to fetch bookings
   const bookingsQuery = trpc.bookings.getAll.useQuery(undefined, {
     refetchOnWindowFocus: false,
-    staleTime: 2 * 60 * 1000, // 2 minutes
+    staleTime: 2 * 60 * 1000,
     enabled: backendAvailable,
     retry: (failureCount: number, error: any) => {
-      console.log('tRPC bookings query error:', error?.message);
-      if (error?.message?.includes('fetch') || 
-          error?.message?.includes('Failed to fetch') ||
-          error?.message?.includes('Network error') ||
-          error?.message?.includes('timeout')) {
+      const errorMsg = error?.message || '';
+      console.log('tRPC bookings query error:', errorMsg);
+      if (errorMsg.includes('fetch') || 
+          errorMsg.includes('Failed to fetch') ||
+          errorMsg.includes('Network error') ||
+          errorMsg.includes('timeout') ||
+          errorMsg.includes('404') ||
+          errorMsg.includes('Not Found')) {
         console.log('Backend not available, using local bookings fallback');
         setBackendAvailable(false);
         return false;

@@ -48,11 +48,13 @@ export const [BoardsBackendProvider, useBoardsBackendInternal] = createContextHo
     staleTime: 5 * 60 * 1000, // 5 minutes
     enabled: backendAvailable,
     retry: (failureCount: number, error: any) => {
-      console.log('tRPC boards query error:', error?.message);
-      if (error?.message?.includes('fetch') || 
-          error?.message?.includes('Failed to fetch') ||
-          error?.message?.includes('Network error') ||
-          error?.message?.includes('timeout')) {
+      const errorMsg = error?.message || '';
+      if (errorMsg.includes('fetch') || 
+          errorMsg.includes('Failed to fetch') ||
+          errorMsg.includes('Network error') ||
+          errorMsg.includes('timeout') ||
+          errorMsg.includes('404') ||
+          errorMsg.includes('Not Found')) {
         console.log('Backend not available, using local boards fallback');
         setBackendAvailable(false);
         return false;
