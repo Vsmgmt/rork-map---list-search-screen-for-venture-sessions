@@ -19,7 +19,10 @@ import {
   Receipt, 
   Calendar,
   Phone,
-  Truck
+  Truck,
+  MapPin,
+  ShoppingBag,
+  Package
 } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import { CheckoutInfo } from '@/src/types/board';
@@ -256,11 +259,52 @@ export default function EmailReceiptScreen() {
         </View>
         
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>What&apos;s Next?</Text>
+          <Text style={styles.sectionTitle}>Meeting Location & Directions</Text>
+          <View style={styles.directionsBox}>
+            <MapPin size={24} color={Colors.light.tint} />
+            <View style={styles.directionsContent}>
+              <Text style={styles.directionsTitle}>Haleiwa Beach Park - South End</Text>
+              <Text style={styles.directionsText}>
+                Look for the lifeguard tower. We will meet you near the south end of Haleiwa Beach Park by the main parking area.
+              </Text>
+            </View>
+          </View>
+        </View>
+
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>What to Bring</Text>
+          <View style={styles.infoBox}>
+            <ShoppingBag size={24} color={Colors.light.tint} />
+            <View style={styles.infoContent}>
+              <Text style={styles.infoItem}>• Come wearing your swimsuit</Text>
+              <Text style={styles.infoItem}>• Apply sunscreen before arrival</Text>
+              <Text style={styles.infoItem}>• Bring a towel</Text>
+              <Text style={styles.infoItem}>• Water bottle (stay hydrated!)</Text>
+              <Text style={styles.infoItem}>• Reef-safe sunscreen for reapplication</Text>
+            </View>
+          </View>
+        </View>
+
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>What We Provide</Text>
+          <View style={styles.infoBox}>
+            <Package size={24} color={Colors.light.tint} />
+            <View style={styles.infoContent}>
+              <Text style={styles.infoItem}>• Surfboard or paddleboard</Text>
+              <Text style={styles.infoItem}>• Rash guard</Text>
+              <Text style={styles.infoItem}>• Booties (reef protection)</Text>
+              <Text style={styles.infoItem}>• Safety leash</Text>
+              <Text style={styles.infoItem}>• Professional instruction (for lessons/tours)</Text>
+            </View>
+          </View>
+        </View>
+
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Important Reminders</Text>
           <View style={styles.nextStepItem}>
             <Calendar size={20} color={Colors.light.tint} />
             <Text style={styles.nextStepText}>
-              Arrive at the pickup location at your scheduled time
+              Arrive 10 minutes early to get fitted for your gear
             </Text>
           </View>
           <View style={styles.nextStepItem}>
@@ -272,7 +316,7 @@ export default function EmailReceiptScreen() {
           <View style={styles.nextStepItem}>
             <Phone size={20} color={Colors.light.tint} />
             <Text style={styles.nextStepText}>
-              Contact us if you need to make any changes
+              Contact us if you need to make any changes or have questions
             </Text>
           </View>
         </View>
@@ -556,5 +600,44 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: 18,
     fontWeight: '600' as const,
+  },
+  directionsBox: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    backgroundColor: '#e7f3ff',
+    borderRadius: 8,
+    padding: 16,
+  },
+  directionsContent: {
+    flex: 1,
+    marginLeft: 12,
+  },
+  directionsTitle: {
+    fontSize: 16,
+    fontWeight: '600' as const,
+    color: '#212529',
+    marginBottom: 8,
+  },
+  directionsText: {
+    fontSize: 14,
+    color: '#495057',
+    lineHeight: 20,
+  },
+  infoBox: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    backgroundColor: '#f8f9fa',
+    borderRadius: 8,
+    padding: 16,
+  },
+  infoContent: {
+    flex: 1,
+    marginLeft: 12,
+  },
+  infoItem: {
+    fontSize: 14,
+    color: '#495057',
+    lineHeight: 24,
+    marginBottom: 4,
   },
 });
