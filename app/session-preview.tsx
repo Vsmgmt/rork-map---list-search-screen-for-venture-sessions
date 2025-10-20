@@ -11,18 +11,22 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLocalSearchParams, router } from 'expo-router';
-import { X, MapPin, Clock, Users, Star, Award, CheckCircle } from 'lucide-react-native';
+import { X, MapPin, Clock, Users, Star, Award, CheckCircle, MessageCircle } from 'lucide-react-native';
 import { useSessions } from '@/src/context/sessions';
 import { useCart } from '@/src/context/cart';
 import { Session } from '@/src/types/session';
 import Colors from '@/constants/colors';
 import DatePicker, { TimeSlotPicker } from '@/components/DatePicker';
+import { useMessagesBackend } from '@/src/context/messages-backend';
+import { useUser } from '@/src/context/user';
 
 export default function SessionPreviewModal() {
   const insets = useSafeAreaInsets();
   const { sessionId } = useLocalSearchParams<{ sessionId: string }>();
   const { getSessionById } = useSessions();
   const { addSessionToCart } = useCart();
+  const { createConversation } = useMessagesBackend();
+  const { currentUser } = useUser();
   
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
@@ -31,6 +35,10 @@ export default function SessionPreviewModal() {
   const [bookingTime, setBookingTime] = useState<string>('');
   const [endDate, setEndDate] = useState<string>('');
   const [participants, setParticipants] = useState<number>(1);
+  
+  const [showContactModal, setShowContactModal] = useState(false);
+  const [contactName, setContactName] = useState('');
+  const [contactEmail, setContactEmail] = useState('');
   
   useEffect(() => {
     if (!sessionId) {
@@ -153,6 +161,46 @@ export default function SessionPreviewModal() {
     );
   };
 
+  const handleMessageGuide = async () => {
+    if (!session) return;
+
+    if (currentUser) {
+      const conversationId = await createConversation(session.instructor.id);
+      router.push(`/chat?conversationId=${conversationId}`);
+    } else {
+      setShowContactModal(true);
+    }
+  };
+
+  const handleSubmitContact = async () => {
+    if (!contactName.trim() || !contactEmail.trim()) {
+      Alert.alert('Missing Information', 'Please enter your name and email.');
+      return;
+    }
+
+    if (!contactEmail.includes('@')) {
+      Alert.alert('Invalid Email', 'Please enter a valid email address.');
+      return;
+    }
+
+    if (!session) return;
+
+    setShowContactModal(false);
+    Alert.alert(
+      'Contact Information Saved',
+      'Your contact information has been saved. You can now message the guide.',
+      [
+        {
+          text: 'OK',
+          onPress: async () => {
+            const conversationId = await createConversation(session.instructor.id);
+            router.push(`/chat?conversationId=${conversationId}`);
+          }
+        }
+      ]
+    );
+  };
+
   return (
     <ScrollView style={[styles.container, { paddingTop: insets.top }]} showsVerticalScrollIndicator={false}>
       <View style={styles.header}>
@@ -244,7 +292,10 @@ export default function SessionPreviewModal() {
               {session.instructor.bio && (
                 <Text style={styles.instructorBio}>{session.instructor.bio}</Text>
               )}
-              <Text style={styles.instructorContact}>{session.instructor.phone}</Text>
+              <Pressable style={styles.messageButton} onPress={handleMessageGuide}>
+                <MessageCircle size={18} color="white" />
+                <Text style={styles.messageButtonText}>Message Guide</Text>
+              </Pressable>
             </View>
           </View>
         </View>
@@ -363,6 +414,70 @@ export default function SessionPreviewModal() {
 
         <View style={{ height: insets.bottom + 20 }} />
       </View>
+
+      {showContactModal && (
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Contact Information</Text>
+            <Text style={styles.modalSubtitle}>Please provide your information to start messaging</Text>
+            
+            <View style={styles.inputContainer}>
+              <Text style={styles.inputLabel}>Name</Text>
+              <View style={styles.input}>
+                <Text 
+                  style={styles.inputText}
+                  onPress={() => {
+                    Alert.prompt(
+                      'Your Name',
+                      'Enter your name',
+                      (text) => setContactName(text),
+                      'plain-text',
+                      contactName
+                    );
+                  }}
+                >
+                  {contactName || 'Tap to enter your name'}
+                </Text>
+              </View>
+            </View>
+
+            <View style={styles.inputContainer}>
+              <Text style={styles.inputLabel}>Email</Text>
+              <View style={styles.input}>
+                <Text 
+                  style={styles.inputText}
+                  onPress={() => {
+                    Alert.prompt(
+                      'Your Email',
+                      'Enter your email address',
+                      (text) => setContactEmail(text),
+                      'plain-text',
+                      contactEmail
+                    );
+                  }}
+                >
+                  {contactEmail || 'Tap to enter your email'}
+                </Text>
+              </View>
+            </View>
+
+            <View style={styles.modalButtons}>
+              <Pressable 
+                style={[styles.modalButton, styles.modalButtonCancel]} 
+                onPress={() => setShowContactModal(false)}
+              >
+                <Text style={styles.modalButtonTextCancel}>Cancel</Text>
+              </Pressable>
+              <Pressable 
+                style={[styles.modalButton, styles.modalButtonSubmit]} 
+                onPress={handleSubmitContact}
+              >
+                <Text style={styles.modalButtonTextSubmit}>Continue</Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      )}
     </ScrollView>
   );
 }
@@ -549,9 +664,21 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     marginBottom: 8,
   },
-  instructorContact: {
+  messageButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    backgroundColor: '#007AFF',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
+    marginTop: 8,
+  },
+  messageButtonText: {
     fontSize: 14,
-    color: '#007AFF',
+    fontWeight: '600',
+    color: 'white',
   },
   availabilitySection: {
     marginBottom: 24,
@@ -696,5 +823,78 @@ const styles = StyleSheet.create({
   },
   bookButtonDisabled: {
     backgroundColor: '#ccc',
+  },
+  modalOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  modalContent: {
+    backgroundColor: 'white',
+    borderRadius: 16,
+    padding: 24,
+    width: '100%',
+    maxWidth: 400,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  modalSubtitle: {
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 24,
+    textAlign: 'center',
+  },
+  inputContainer: {
+    marginBottom: 16,
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    backgroundColor: '#f9f9f9',
+  },
+  inputText: {
+    fontSize: 16,
+    color: '#333',
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 24,
+  },
+  modalButton: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  modalButtonCancel: {
+    backgroundColor: '#f5f5f5',
+  },
+  modalButtonSubmit: {
+    backgroundColor: '#007AFF',
+  },
+  modalButtonTextCancel: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333',
+  },
+  modalButtonTextSubmit: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: 'white',
   },
 });
