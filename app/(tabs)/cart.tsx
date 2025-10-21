@@ -166,17 +166,25 @@ export default function CartScreen() {
       </View>
 
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-        {cartItems.map((item, index) => (
+        {cartItems.map((item, index) => {
+          if (!item.board) {
+            console.warn('Cart item missing board data at index:', index);
+            return null;
+          }
+          
+          const imageUrl = item.board.imageUrl || item.board.image_url || 'https://via.placeholder.com/400x600';
+          
+          return (
           <View key={`${item.board.id}-${index}`} style={styles.cartItem}>
             <View style={styles.itemHeader}>
               <Image 
-                source={{ uri: item.board.imageUrl }} 
+                source={{ uri: imageUrl }} 
                 style={styles.boardImage}
                 resizeMode="cover"
               />
               <View style={styles.itemInfo}>
-                <Text style={styles.boardName}>{item.board.short_name}</Text>
-                <Text style={styles.boardDetails}>{item.board.dimensions_detail}</Text>
+                <Text style={styles.boardName}>{item.board.short_name || 'Unknown Board'}</Text>
+                <Text style={styles.boardDetails}>{item.board.dimensions_detail || ''}</Text>
                 {item.board.type && (
                   <View style={styles.typeContainer}>
                     <View style={[styles.typeBadge, { backgroundColor: getTypeColor(item.board.type) }]}>
@@ -244,7 +252,7 @@ export default function CartScreen() {
             <View style={styles.extrasSection}>
               <Text style={styles.extrasSectionTitle}>Available Extras</Text>
               {availableExtras.map((extra) => {
-                const cartExtra = item.extras.find(e => e.extra.id === extra.id);
+                const cartExtra = item.extras?.find(e => e.extra.id === extra.id);
                 const quantity = cartExtra?.quantity || 0;
                 
                 return (
@@ -302,10 +310,10 @@ export default function CartScreen() {
               })}
               
               {/* Show selected extras summary */}
-              {item.extras.length > 0 && (
+              {item.extras && item.extras.length > 0 && (
                 <View style={styles.selectedExtras}>
                   <Text style={styles.selectedExtrasTitle}>Selected Extras:</Text>
-                  {item.extras.map((cartExtra, extraIndex) => (
+                  {item.extras?.map((cartExtra, extraIndex) => (
                     <View key={`${cartExtra.extra.id}-${extraIndex}`} style={styles.selectedExtraItem}>
                       <Text style={styles.selectedExtraText}>
                         {cartExtra.quantity}x {cartExtra.extra.name}
@@ -324,11 +332,11 @@ export default function CartScreen() {
               <View style={styles.priceContainer}>
                 <Text style={styles.priceLabel}>Rental:</Text>
                 <Text style={styles.priceText}>${item.totalPrice}</Text>
-                {item.extras.length > 0 && (
+                {item.extras && item.extras.length > 0 && (
                   <>
                     <Text style={styles.priceLabel}>Extras:</Text>
                     <Text style={styles.priceText}>
-                      ${item.extras.reduce((sum, extra) => sum + extra.totalPrice, 0)}
+                      ${item.extras?.reduce((sum, extra) => sum + extra.totalPrice, 0) || 0}
                     </Text>
                   </>
                 )}
@@ -336,12 +344,13 @@ export default function CartScreen() {
               <View style={styles.itemTotalContainer}>
                 <Text style={styles.itemTotalLabel}>Item Total:</Text>
                 <Text style={styles.itemTotalText}>
-                  ${item.totalPrice + item.extras.reduce((sum, extra) => sum + extra.totalPrice, 0)}
+                  ${item.totalPrice + (item.extras?.reduce((sum, extra) => sum + extra.totalPrice, 0) || 0)}
                 </Text>
               </View>
             </View>
           </View>
-        ))}
+          );
+        })}
       </ScrollView>
 
       <View style={styles.footer}>
@@ -354,12 +363,12 @@ export default function CartScreen() {
             </Text>
           </View>
           
-          {cartItems.some(item => item.extras.length > 0) && (
+          {cartItems.some(item => item.extras && item.extras.length > 0) && (
             <View style={styles.breakdownRow}>
               <Text style={styles.breakdownLabel}>Extras Subtotal:</Text>
               <Text style={styles.breakdownValue}>
                 ${cartItems.reduce((sum, item) => 
-                  sum + item.extras.reduce((extraSum, extra) => extraSum + extra.totalPrice, 0), 0
+                  sum + (item.extras?.reduce((extraSum, extra) => extraSum + extra.totalPrice, 0) || 0), 0
                 )}
               </Text>
             </View>
