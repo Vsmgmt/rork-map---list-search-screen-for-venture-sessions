@@ -1,5 +1,5 @@
 import { Tabs } from "expo-router";
-import { Search, Map, Info, ShoppingCart, User, MessageCircle } from "lucide-react-native";
+import { Map, Info, ShoppingCart, User, MessageCircle } from "lucide-react-native";
 import React from "react";
 import { View, Text, StyleSheet } from "react-native";
 import { useMessages } from "@/src/context/messages";
@@ -60,8 +60,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="search"
         options={{
-          title: "Search",
-          tabBarIcon: ({ color }) => <Search color={color} />,
+          href: null,
         }}
       />
       <Tabs.Screen
