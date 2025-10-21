@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -8,6 +8,7 @@ import {
   TextInput,
   Alert,
   ActivityIndicator,
+  Modal,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
@@ -22,7 +23,11 @@ import {
   Truck,
   MapPin,
   ShoppingBag,
-  Package
+  Package,
+  Star,
+  Award,
+  Users,
+  Video
 } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import { CheckoutInfo } from '@/src/types/board';
@@ -34,12 +39,21 @@ export default function EmailReceiptScreen() {
   const [email, setEmail] = useState('');
   const [isSending, setIsSending] = useState(false);
   const [emailSent, setEmailSent] = useState(false);
+  const [showMembershipModal, setShowMembershipModal] = useState(false);
   
   // Parse the passed parameters
   const confirmationNumber = params.confirmationNumber as string;
   const customerInfo = JSON.parse(params.customerInfo as string) as CheckoutInfo;
   const orderItems = JSON.parse(params.orderItems as string);
   const totalAmount = parseFloat(params.totalAmount as string);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setShowMembershipModal(true);
+    }, 2000);
+
+    return () => clearTimeout(timer);
+  }, []);
   
   const handleSendReceipt = async () => {
     if (!email.trim() || !email.includes('@')) {
@@ -85,6 +99,99 @@ export default function EmailReceiptScreen() {
   
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
+      <Modal
+        visible={showMembershipModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowMembershipModal(false)}
+      >
+        <Pressable 
+          style={styles.modalOverlay}
+          onPress={() => setShowMembershipModal(false)}
+        >
+          <Pressable style={styles.modalContent} onPress={(e) => e.stopPropagation()}>
+            <View style={styles.modalHeader}>
+              <View style={styles.membershipIconContainer}>
+                <Star size={32} color="#FFD700" fill="#FFD700" />
+              </View>
+              <Text style={styles.modalTitle}>Become a Venture Sessions Member</Text>
+              <Text style={styles.modalSubtitle}>
+                Join our community and unlock exclusive benefits
+              </Text>
+            </View>
+
+            <View style={styles.benefitsContainer}>
+              <View style={styles.benefitItem}>
+                <View style={styles.benefitIconBg}>
+                  <Award size={20} color={Colors.light.tint} />
+                </View>
+                <Text style={styles.benefitText}>20% off your next booking</Text>
+              </View>
+
+              <View style={styles.benefitItem}>
+                <View style={styles.benefitIconBg}>
+                  <Star size={20} color={Colors.light.tint} />
+                </View>
+                <Text style={styles.benefitText}>Exclusive special perks & deals</Text>
+              </View>
+
+              <View style={styles.benefitItem}>
+                <View style={styles.benefitIconBg}>
+                  <Package size={20} color={Colors.light.tint} />
+                </View>
+                <Text style={styles.benefitText}>Free wax with every rental</Text>
+              </View>
+
+              <View style={styles.benefitItem}>
+                <View style={styles.benefitIconBg}>
+                  <Video size={20} color={Colors.light.tint} />
+                </View>
+                <Text style={styles.benefitText}>Access to online master classes</Text>
+              </View>
+
+              <View style={styles.benefitItem}>
+                <View style={styles.benefitIconBg}>
+                  <Users size={20} color={Colors.light.tint} />
+                </View>
+                <Text style={styles.benefitText}>Professional coaching & learning</Text>
+              </View>
+            </View>
+
+            <View style={styles.pricingContainer}>
+              <View style={styles.priceRow}>
+                <Text style={styles.priceAmount}>$10</Text>
+                <Text style={styles.priceLabel}>/month</Text>
+              </View>
+              <Text style={styles.pricingTagline}>
+                but connections and experience are priceless
+              </Text>
+            </View>
+
+            <View style={styles.modalActions}>
+              <Pressable 
+                style={styles.joinButton}
+                onPress={() => {
+                  setShowMembershipModal(false);
+                  Alert.alert(
+                    'Coming Soon',
+                    'Membership signup will be available soon!'
+                  );
+                }}
+              >
+                <Text style={styles.joinButtonText}>Join Now</Text>
+              </Pressable>
+
+              <Pressable 
+                style={styles.maybeLaterButton}
+                onPress={() => setShowMembershipModal(false)}
+              >
+                <Text style={styles.maybeLaterText}>Maybe Later</Text>
+              </Pressable>
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
       <View style={styles.header}>
         <Text style={styles.title}>Email Receipt</Text>
         <Pressable onPress={() => router.back()} style={styles.closeButton}>
@@ -639,5 +746,122 @@ const styles = StyleSheet.create({
     color: '#495057',
     lineHeight: 24,
     marginBottom: 4,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  modalContent: {
+    backgroundColor: 'white',
+    borderRadius: 20,
+    padding: 24,
+    width: '100%',
+    maxWidth: 400,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  modalHeader: {
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  membershipIconContainer: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: '#FFF9E6',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  modalTitle: {
+    fontSize: 22,
+    fontWeight: 'bold' as const,
+    color: '#212529',
+    textAlign: 'center' as const,
+    marginBottom: 8,
+  },
+  modalSubtitle: {
+    fontSize: 14,
+    color: '#6c757d',
+    textAlign: 'center' as const,
+  },
+  benefitsContainer: {
+    marginBottom: 24,
+  },
+  benefitItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  benefitIconBg: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#e7f3ff',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  benefitText: {
+    fontSize: 15,
+    color: '#212529',
+    flex: 1,
+    lineHeight: 22,
+  },
+  pricingContainer: {
+    alignItems: 'center',
+    backgroundColor: '#f8f9fa',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 24,
+  },
+  priceRow: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    marginBottom: 8,
+  },
+  priceAmount: {
+    fontSize: 36,
+    fontWeight: 'bold' as const,
+    color: Colors.light.tint,
+  },
+  priceLabel: {
+    fontSize: 18,
+    color: '#6c757d',
+    marginLeft: 4,
+  },
+  pricingTagline: {
+    fontSize: 13,
+    color: '#6c757d',
+    fontStyle: 'italic' as const,
+    textAlign: 'center' as const,
+  },
+  modalActions: {
+    gap: 12,
+  },
+  joinButton: {
+    backgroundColor: Colors.light.tint,
+    paddingVertical: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  joinButtonText: {
+    color: 'white',
+    fontSize: 18,
+    fontWeight: '600' as const,
+  },
+  maybeLaterButton: {
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  maybeLaterText: {
+    color: '#6c757d',
+    fontSize: 16,
   },
 });
