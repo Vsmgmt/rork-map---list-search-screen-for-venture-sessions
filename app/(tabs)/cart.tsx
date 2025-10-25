@@ -167,15 +167,23 @@ export default function CartScreen() {
 
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
         {cartItems.map((item, index) => {
-          if (!item.board) {
-            console.warn('Cart item missing board data at index:', index);
+          if (!item || (!item.board && !item.session)) {
+            console.warn('Cart item missing both board and session data at index:', index);
             return null;
           }
           
-          const imageUrl = item.board.imageUrl || item.board.image_url || 'https://via.placeholder.com/400x600';
+          const isSession = !!item.session;
+          const currentItem = item.session || item.board;
+          
+          if (!currentItem) {
+            console.warn('Cart item missing data at index:', index);
+            return null;
+          }
+          
+          const imageUrl = currentItem.imageUrl || currentItem.image_url || 'https://via.placeholder.com/400x600';
           
           return (
-          <View key={`${item.board.id}-${index}`} style={styles.cartItem}>
+          <View key={`${currentItem.id}-${index}`} style={styles.cartItem}>
             <View style={styles.itemHeader}>
               <Image 
                 source={{ uri: imageUrl }} 
@@ -183,18 +191,22 @@ export default function CartScreen() {
                 resizeMode="cover"
               />
               <View style={styles.itemInfo}>
-                <Text style={styles.boardName}>{item.board.short_name || 'Unknown Board'}</Text>
-                <Text style={styles.boardDetails}>{item.board.dimensions_detail || ''}</Text>
-                {item.board.type && (
+                <Text style={styles.boardName}>{currentItem.name || currentItem.short_name || 'Unknown Item'}</Text>
+                <Text style={styles.boardDetails}>
+                  {isSession 
+                    ? `${currentItem.level || ''} · ${currentItem.duration || 0} min`
+                    : currentItem.dimensions_detail || ''}
+                </Text>
+                {currentItem.type && (
                   <View style={styles.typeContainer}>
-                    <View style={[styles.typeBadge, { backgroundColor: getTypeColor(item.board.type) }]}>
+                    <View style={[styles.typeBadge, { backgroundColor: getTypeColor(currentItem.type) }]}>
                       <Text style={styles.typeText}>
-                        {item.board.type.charAt(0).toUpperCase() + item.board.type.slice(1)}
+                        {currentItem.type.charAt(0).toUpperCase() + currentItem.type.slice(1)}
                       </Text>
                     </View>
                   </View>
                 )}
-                {item.board.owner && (
+                {item.board?.owner && (
                   <View style={styles.ownerRow}>
                     <Image
                       source={{ uri: item.board.owner.avatarUrl || item.board.owner.avatar_url || 'https://via.placeholder.com/40' }}
@@ -228,12 +240,14 @@ export default function CartScreen() {
               </View>
             </View>
 
-            <View style={styles.locationRow}>
-              <Text style={styles.locationLabel}>Pickup:</Text>
-              <Text style={styles.locationText}>{item.board.pickup_spot}</Text>
-            </View>
+            {item.board && item.board.pickup_spot && (
+              <View style={styles.locationRow}>
+                <Text style={styles.locationLabel}>Pickup:</Text>
+                <Text style={styles.locationText}>{item.board.pickup_spot}</Text>
+              </View>
+            )}
 
-            {item.board.delivery_available && (
+            {item.board?.delivery_available && (
               <Pressable 
                 style={styles.deliveryOption} 
                 onPress={() => toggleDelivery(index)}
@@ -244,11 +258,12 @@ export default function CartScreen() {
                   )}
                 </View>
                 <Truck size={16} color={Colors.light.tint} />
-                <Text style={styles.deliveryText}>Delivery (${item.board.delivery_price})</Text>
+                <Text style={styles.deliveryText}>Delivery (${item.board?.delivery_price || 0})</Text>
               </Pressable>
             )}
 
-            {/* Extras Section */}
+            {/* Extras Section - only for board rentals */}
+            {item.board && (
             <View style={styles.extrasSection}>
               <Text style={styles.extrasSectionTitle}>Available Extras</Text>
               {availableExtras.map((extra) => {
@@ -327,6 +342,7 @@ export default function CartScreen() {
                 </View>
               )}
             </View>
+            )}
 
             <View style={styles.priceRow}>
               <View style={styles.priceContainer}>

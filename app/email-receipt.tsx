@@ -266,12 +266,20 @@ export default function EmailReceiptScreen() {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Order Details</Text>
           {orderItems.map((item: any, index: number) => {
-            const isSession = item.session || item.board?.type === 'lesson' || item.board?.type === 'tour' || item.board?.type === 'camp' || item.board?.type === 'session';
+            if (!item) return null;
+            
+            const isSession = !!item.session;
             const bookingItem = item.session || item.board;
-            const itemName = bookingItem?.short_name || bookingItem?.name || 'Unknown Item';
+            
+            if (!bookingItem) {
+              console.warn('No booking item found for order item at index:', index);
+              return null;
+            }
+            
+            const itemName = bookingItem.name || bookingItem.short_name || 'Unknown Item';
             const itemDetails = isSession 
-              ? `${bookingItem?.level || ''} · ${bookingItem?.duration || 0} min`
-              : bookingItem?.dimensions_detail || '';
+              ? `${bookingItem.level || ''} · ${bookingItem.duration || 0} min`
+              : bookingItem.dimensions_detail || '';
             
             return (
               <View key={`${bookingItem?.id}-${index}`} style={styles.orderItem}>
