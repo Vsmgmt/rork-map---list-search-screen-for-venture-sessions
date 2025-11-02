@@ -169,6 +169,7 @@ export function getSessions(count: number = 60): Session[] {
     const { start, end } = generateAvailability();
     
     const description = SESSION_DESCRIPTIONS[level][Math.floor(Math.random() * SESSION_DESCRIPTIONS[level].length)];
+    const imageUrl = SESSION_IMAGES[i % SESSION_IMAGES.length];
     
     sessions.push({
       id: `session-${i + 1}`,
@@ -184,8 +185,8 @@ export function getSessions(count: number = 60): Session[] {
       available_start: start,
       available_end: end,
       max_participants: type === 'session' ? 1 : type === 'lesson' ? randomInt(4, 8) : type === 'tour' ? randomInt(6, 12) : randomInt(10, 20),
-      imageUrl: SESSION_IMAGES[Math.floor(Math.random() * SESSION_IMAGES.length)],
-      image_url: SESSION_IMAGES[Math.floor(Math.random() * SESSION_IMAGES.length)],
+      imageUrl: imageUrl,
+      image_url: imageUrl,
       instructor: {
         ...instructor,
         bio: `Professional surf instructor with ${randomInt(5, 15)}+ years of experience teaching surfers of all levels.`
