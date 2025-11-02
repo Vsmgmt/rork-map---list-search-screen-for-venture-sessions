@@ -51,19 +51,19 @@ export default function BackendTestScreen() {
           )}
           {usersQuery.data && (
             <View>
-              <Text>Total users: {usersQuery.data.totalUsers}</Text>
-              <Text>Pro users: {usersQuery.data.proUsers.length}</Text>
-              <Text>Regular users: {usersQuery.data.regularUsers.length} (stored locally)</Text>
+              <Text>Total users: {(usersQuery.data as any).totalUsers}</Text>
+              <Text>Pro users: {(usersQuery.data as any).proUsers?.length || 0}</Text>
+              <Text>Regular users: {(usersQuery.data as any).regularUsers?.length || 0} (stored locally)</Text>
               
-              {usersQuery.data.proUsers.slice(0, 5).map(user => (
+              {((usersQuery.data as any).proUsers || []).slice(0, 5).map((user: any) => (
                 <View key={user.id} style={styles.item}>
                   <Text style={styles.itemTitle}>{user.name}</Text>
                   <Text style={styles.itemSubtitle}>{user.email} • {user.location}</Text>
                 </View>
               ))}
               
-              {usersQuery.data.proUsers.length > 5 && (
-                <Text style={styles.moreText}>... and {usersQuery.data.proUsers.length - 5} more pro users</Text>
+              {((usersQuery.data as any).proUsers || []).length > 5 && (
+                <Text style={styles.moreText}>... and {((usersQuery.data as any).proUsers || []).length - 5} more pro users</Text>
               )}
             </View>
           )}
@@ -85,7 +85,7 @@ export default function BackendTestScreen() {
           {boardsQuery.data && (
             <View>
               <Text>Found {boardsQuery.data.length} boards:</Text>
-              {boardsQuery.data.slice(0, 3).map(board => (
+              {boardsQuery.data.slice(0, 3).map((board: any) => (
                 <View key={board.id} style={styles.item}>
                   <Text style={styles.itemTitle}>{board.short_name}</Text>
                   <Text style={styles.itemSubtitle}>{board.location} • ${board.price_per_day}/day</Text>

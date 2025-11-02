@@ -115,7 +115,7 @@ export default function ProUserScreen() {
   
   // Fetch all users for owner selection (changed from pro users only)
   const { data: allUsersResponse, isLoading: proUsersLoading } = trpc.admin.getAllUsers.useQuery();
-  const proUsers = allUsersResponse?.proUsers || [];
+  const proUsers = (allUsersResponse as any)?.proUsers || [];
   
   const [activeTab, setActiveTab] = useState<'dashboard' | 'add-board' | 'bookings' | 'my-boards'>('dashboard');
   const [searchQuery, setSearchQuery] = useState('');
