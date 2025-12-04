@@ -57,25 +57,7 @@ const SESSION_IMAGES = [
   'https://images.unsplash.com/photo-1502933691298-84fc14542831?w=800&h=600&fit=crop',
   'https://images.unsplash.com/photo-1505142468610-359e7d316be0?w=800&h=600&fit=crop',
   'https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=800&h=600&fit=crop',
-  'https://images.unsplash.com/photo-1455264745730-cb4fef2bdc18?w=800&h=600&fit=crop',
-  'https://images.unsplash.com/photo-1502680390469-be75c86b636f?w=800&h=600&fit=crop',
-  'https://images.unsplash.com/photo-1510414842594-a61c69b5ae57?w=800&h=600&fit=crop',
-  'https://images.unsplash.com/photo-1476610182048-b716b8518aae?w=800&h=600&fit=crop',
-  'https://images.unsplash.com/photo-1471922694854-ff1b63b20054?w=800&h=600&fit=crop',
-  'https://images.unsplash.com/photo-1468770938479-b06e30a11e9e?w=800&h=600&fit=crop',
-  'https://images.unsplash.com/photo-1473968512647-3e447244af8f?w=800&h=600&fit=crop',
-  'https://images.unsplash.com/photo-1467377791767-c929b5dc9a23?w=800&h=600&fit=crop',
-  'https://images.unsplash.com/photo-1414490929659-9a12b7e31907?w=800&h=600&fit=crop',
-  'https://images.unsplash.com/photo-1476673160081-cf065607f449?w=800&h=600&fit=crop',
-  'https://images.unsplash.com/photo-1502680390469-be75c86b636f?w=800&h=600&fit=crop',
-  'https://images.unsplash.com/photo-1502129225840-72a1f5d51549?w=800&h=600&fit=crop',
-  'https://images.unsplash.com/photo-1433190152045-5a94184895da?w=800&h=600&fit=crop',
-  'https://images.unsplash.com/photo-1519046904884-53103b34b206?w=800&h=600&fit=crop',
-  'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=800&h=600&fit=crop',
-  'https://images.unsplash.com/photo-1502933691298-84fc14542831?w=800&h=600&fit=crop',
-  'https://images.unsplash.com/photo-1483683804023-6ccdb62f86ef?w=800&h=600&fit=crop',
-  'https://images.unsplash.com/photo-1476610182048-b716b8518aae?w=800&h=600&fit=crop',
-  'https://images.unsplash.com/photo-1502129225840-72a1f5d51549?w=800&h=600&fit=crop'
+  'https://images.unsplash.com/photo-1455264745730-cb4fef2bdc18?w=800&h=600&fit=crop'
 ];
 
 function randomBetween(min: number, max: number): number {
