@@ -196,14 +196,31 @@ class SupabaseDatabase {
       newBoard = { ...board, id };
     }
     
-    // Ensure owner has complete data from database
-    let ownerData = newBoard.owner;
+    // Ensure owner has complete data from database or auto-assign
+    let ownerData: ProUser | undefined = newBoard.owner;
+    
     if (ownerData && ownerData.id) {
+      // Owner specified, try to get full data
       const fullOwner = await this.getProUserById(ownerData.id);
       if (fullOwner) {
         ownerData = fullOwner;
         newBoard.owner = fullOwner;
+      } else {
+        console.log('⚠️  Specified owner not found, auto-assigning random pro user');
+        ownerData = undefined;
       }
+    }
+    
+    // If no owner or owner not found, auto-assign a random pro user
+    if (!ownerData) {
+      const proUsers = await this.getProUsers();
+      if (!proUsers || proUsers.length === 0) {
+        throw new Error('No pro users available to assign board');
+      }
+      const randomIndex = Math.floor(Math.random() * proUsers.length);
+      ownerData = proUsers[randomIndex];
+      newBoard.owner = ownerData;
+      console.log('🎲 Auto-assigned random pro user to board:', ownerData.name, 'ID:', ownerData.id);
     }
     
     // Map the Board object to database schema with ALL required fields

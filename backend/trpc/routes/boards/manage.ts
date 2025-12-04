@@ -25,18 +25,25 @@ export const addBoardRoute = publicProcedure
   .mutation(async ({ input }) => {
     console.log('Adding board:', input);
     
-    // Get owner information - auto-assign random pro user if not provided
+    // Always auto-assign a random pro user when no owner is provided
     let owner;
     if (input.ownerId) {
       owner = await db.getProUserById(input.ownerId);
       if (!owner) {
-        throw new Error('Owner not found');
+        console.log('⚠️  Specified owner not found, auto-assigning random pro user');
+        const proUsers = await db.getProUsers();
+        if (!proUsers || proUsers.length === 0) {
+          throw new Error('No pro users available to assign board');
+        }
+        const randomIndex = Math.floor(Math.random() * proUsers.length);
+        owner = proUsers[randomIndex];
+        console.log('🎲 Auto-assigned random pro user:', owner.name, 'ID:', owner.id);
       }
     } else {
       // Auto-assign a random pro user
       const proUsers = await db.getProUsers();
       if (!proUsers || proUsers.length === 0) {
-        throw new Error('No pro users available');
+        throw new Error('No pro users available to assign board');
       }
       const randomIndex = Math.floor(Math.random() * proUsers.length);
       owner = proUsers[randomIndex];
