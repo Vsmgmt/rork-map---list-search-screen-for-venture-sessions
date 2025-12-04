@@ -32,7 +32,7 @@ import {
 } from 'lucide-react-native';
 import { useBookingsBackend } from '@/src/context/bookings-backend';
 import { useBoardsBackend } from '@/src/context/boards-backend';
-import { Booking, CartItem, Board } from '@/src/types/board';
+import { Booking, CartItem } from '@/src/types/board';
 import Colors from '@/constants/colors';
 import { trpc } from '@/lib/trpc';
 
@@ -115,10 +115,10 @@ export default function AdminScreen() {
   const regionalStats = useMemo(() => {
     const regions = ['Honolulu', 'Kona', 'San Diego', 'Santa Cruz', 'Bali', 'Gold Coast', 'Hossegor', 'Ericeira', 'Taghazout', 'Chiba', 'Lisbon', 'Puerto Escondido'];
     return regions.map(region => {
-      const regionBoards = boards.filter((board: Board) => board.location === region);
+      const regionBoards = boards.filter(board => board.location === region);
       const regionBookings = bookings.filter((booking: Booking) => 
         booking.orderItems.some((item: CartItem) => 
-          boards.find((board: Board) => board.id === item.board?.id)?.location === region
+          boards.find(board => board.id === item.board.id)?.location === region
         )
       );
       const revenue = regionBookings.reduce((sum: number, booking: Booking) => sum + booking.totalAmount, 0);
@@ -135,10 +135,10 @@ export default function AdminScreen() {
   const boardTypeStats = useMemo(() => {
     const types = ['soft-top', 'longboard', 'shortboard', 'fish', 'sup'];
     return types.map(type => {
-      const typeBoards = boards.filter((board: Board) => board.type === type);
+      const typeBoards = boards.filter(board => board.type === type);
       const typeBookings = bookings.filter((booking: Booking) => 
         booking.orderItems.some((item: CartItem) => 
-          boards.find((board: Board) => board.id === item.board?.id)?.type === type
+          boards.find(board => board.id === item.board.id)?.type === type
         )
       );
       const revenue = typeBookings.reduce((sum: number, booking: Booking) => sum + booking.totalAmount, 0);
